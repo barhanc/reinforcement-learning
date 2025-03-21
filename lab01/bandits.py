@@ -152,7 +152,7 @@ class UCB1Learner(BanditLearner):
         self.color = "green"
         self.c = c
 
-    def reset(self, arms: int, time_steps: int):
+    def reset(self, arms: list[str], time_steps: int):
         self.time = 0
         self.arms = arms
         self.picks = {arm: 0 for arm in arms}
@@ -177,6 +177,9 @@ class ThompsonLearner(BanditLearner):
     def __init__(self):
         self.name = "Thompson"
         self.color = "orange"
+
+    def reset(self, arms: list[str], time_steps: int):
+        self.arms = arms
 
     def reset(self, arms: str, time_steps: int): ...
 
