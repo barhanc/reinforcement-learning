@@ -470,7 +470,7 @@ def task3():
 
     for learner in tqdm(learners):
         avg_regret = compute_avg_regret(learner, potential_hits_list, TIME_STEPS, TRIALS_PER_LEARNER)
-        plt.plot(avg_regret, c=learner.color, label=learner.name)
+        plt.plot(avg_regret, c=learner.color, label=learner.name, lw=0.8)
 
     plt.xlabel("Time")
     plt.ylabel(f"Cumulative avg. regret")
@@ -619,7 +619,6 @@ def task4():
         ax2[i // 3, i % 3].set_xlim(0, TIME_STEPS)
         ax2[i // 3, i % 3].set_ylim(0, TIME_STEPS)
         ax2[i // 3, i % 3].set_xlabel("Time")
-        ax2[i // 3, i % 3].grid(True)
         ax2[i // 3, i % 3].set_ylabel(f"Cumulative reward std.\n({TRIALS_PER_LEARNER} trials)")
 
     ax1.legend(loc="best")
