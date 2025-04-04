@@ -2,12 +2,13 @@ import time
 import random
 import itertools
 
-from math import sqrt, log
 from enum import Enum
+from math import sqrt, log
 from abc import abstractmethod
 from typing import Optional, Protocol
+from concurrent.futures import ProcessPoolExecutor
 
-from tqdm import trange
+from tqdm import tqdm
 
 
 class Colour(Enum):
@@ -189,7 +190,8 @@ class MCTSNode:
 
     def select(self, final=False) -> tuple[int, int]:
         # TODO: tutaj należy wybrać (i zwrócić) najlepszą możliwą akcję (w oparciu o aktualną
-        # wiedzę) podpowiedzi:
+        # wiedzę)
+        # HINT:
         #  * klucze w słowniku `self.children` to pula dostępnych akcji
         #  * każdą z nich należy ocenić zgodnie z techniką UCB (tak jakby był to problem
         #    wielorękiego bandyty)
@@ -210,7 +212,7 @@ class MCTSNode:
             if self.children[action].times_chosen == 0:
                 bound = float("inf")
             else:
-                bound = sqrt(log(self.children[action].times_chosen) / self.times_chosen)
+                bound = sqrt(log(self.times_chosen) / self.children[action].times_chosen)
             return value + self.c_coefficient * bound
 
         return max(self.children, key=lambda action: (criterion(action), random.random()))
@@ -233,7 +235,8 @@ class MCTSNode:
     def simulate(self) -> Colour:
         if not self.terminal:
             # TODO: w tym węźle rozgrywka nie zakończyła się, więc do ustalenia zwycięzcy potrzebna
-            # jest symulacja podpowiedzi:
+            # jest symulacja
+            # HINT
             #  * w tym celu najłatwiej uruchomić osobną, niezależną grę startującą z danego stanu
             #    planszy
             #  * by sumulacja przebiegała możliwe szybko wykonujemy ją z użyciem losowych agentów
@@ -243,7 +246,7 @@ class MCTSNode:
                 red=RandomPlayer(),
                 blue=RandomPlayer(),
                 board=self.board.duplicate(),
-                current_player=self.current_player.flip(),
+                current_player=self.current_player,
             )
             game.run(verbose=False)
 
@@ -253,7 +256,8 @@ class MCTSNode:
 
     def backpropagate(self, winner: Colour) -> None:
         # TODO: należy zaktualizować drzewo - wiedząc, że przejście przez ten węzeł skończyło się
-        # wygraną danego gracza podpowiedzi:
+        # wygraną danego gracza
+        # HINT:
         #  * przede wszystkim należy zaktualizować licznik odwiedzeń (`self.times_chosen`)
         #  * poza tym, konieczna jest też korekta wartościowania (`self.value`)
         #     * siła korekty powinna zależeć od tego, które to z kolei odwiedziny danego węzła
@@ -262,8 +266,12 @@ class MCTSNode:
         #     * ...a inny na wartościowanie węzłów, w których ruch musiał wykonać jego przeciwnik
         #  * warto pamiętać, by po aktualizacji danych węzeł powiadomił o takiej konieczności
         #    również swojego rodzica
+
+        # NOTE: Reward is 1 if winner is the color of the **parent** node and 0 otherwise. This is
+        # because we select the action of the parent based on the `value` field of the children
+        # nodes and thus we want higher value <=> color of the parent node is more likely to win.
         self.times_chosen += 1
-        self.value = self.value - 1 / self.times_chosen * (self.value - (winner == self.current_player))
+        self.value += 1 / self.times_chosen * ((winner != self.current_player) - self.value)
 
         if self.parent:
             self.parent.backpropagate(winner)
@@ -287,7 +295,8 @@ class MCTSPlayer(Player):
             elapsed_time = current_time - start_time
             if elapsed_time >= self.time_limit:
                 break
-        # TODO należy zmienić selekcje tak, by wybrała najlepszą akcję podpowiedź: zamiast UCB wystarczy zwrócić akcję najczęściej odwiedzaną
+        # TODO: należy zmienić selekcje tak, by wybrała najlepszą akcję
+        # HINT: zamiast UCB wystarczy zwrócić akcję najczęściej odwiedzaną
         action = self.root_node.select(final=True)
         self._step_down(action)
         return action
@@ -312,33 +321,84 @@ class MCTSPlayer(Player):
         self.root_node = new_root
 
 
-def main() -> None:
-    red_wins = 0
-    blue_wins = 0
+def play(game: Game, verbose: bool = False) -> Game:
+    game.run(verbose)
+    return game
 
-    EPOCHS = 100
-    H, W = 4, 4
 
-    for _ in range(EPOCHS):
-        board = Board(H, W)  # TODO: na początek możesz skorzystać z mniejszej planszy (np. 4x4)
-        red_player = RandomPlayer()  # TODO: zastąp jednego z agentów wariantem MCTS
-        # podpowiedź: np. takim `red_player = MCTSPlayer(0.2, 0.5)`
-        # blue_player = RandomPlayer()
-        blue_player = MCTSPlayer(time_limit=0.2, c_coefficient=0.5)
-        game = Game(red_player, blue_player, board)
-        game.run(verbose=True)  # TODO: jeżeli nie chcesz czytać na konsoli zapisu partii, skorzystaj z `verbose=False`
+def main(config: dict) -> None:
+    n_games = config["n_games"]
+    board_shape = config["board_shape"]
+    RedPlayerClass = config["RedPlayerClass"]
+    BluePlayerClass = config["BluePlayerClass"]
 
-        if game.winner == Colour.RED:
-            red_wins += 1
-        else:
-            blue_wins += 1
+    red_wins, blue_wins = 0, 0
+    games = (
+        Game(
+            red=RedPlayerClass(**config["red_params"]),
+            blue=BluePlayerClass(**config["blue_params"]),
+            board=Board(*board_shape),
+        )
+        for _ in range(n_games)
+    )
 
-    print(red_wins, blue_wins)  # TODO: jeżeli wszystko poszło dobrze, to agent MCTS powtarzalnie wygrywa z losowym
+    with ProcessPoolExecutor() as executor:
+        results = executor.map(play, games, chunksize=1)
+        for game in tqdm(results, total=n_games):
+            if game.winner == Colour.RED:
+                red_wins += 1
+            else:
+                blue_wins += 1
+
+    # for _ in trange(n_games):
+    #     # TODO: na początek możesz skorzystać z mniejszej planszy (np. 4x4)
+    #     board = Board(*board_shape)
+
+    #     # TODO: zastąp jednego z agentów wariantem MCTS
+    #     # podpowiedź: np. takim `red_player = MCTSPlayer(0.2, 0.5)`
+    #     red_player = MCTSPlayer(time_limit=0.2, c_coefficient=0.5)
+    #     blue_player = RandomPlayer()
+    #     game = Game(red_player, blue_player, board)
+
+    #     # TODO: jeżeli nie chcesz czytać na konsoli zapisu partii, skorzystaj z `verbose=False`
+    #     game.run(verbose=False)
+
+    #     if game.winner == Colour.RED:
+    #         red_wins += 1
+    #     else:
+    #         blue_wins += 1
+
+    # TODO: jeżeli wszystko poszło dobrze, to agent MCTS powtarzalnie wygrywa z losowym
+    print(f"Red  wins = {red_wins:>4} ({red_wins/n_games:6.1%})")
+    print(f"Blue wins = {blue_wins:>4} ({blue_wins/n_games:6.1%})")
 
 
 if __name__ == "__main__":
-    main()  # TODO: jeżeli podstawowy eksperyment zakończył się sukcesem to sprawdź inne jego warianty
+    # TODO: jeżeli podstawowy eksperyment zakończył się sukcesem to sprawdź inne jego warianty
     # podpowiedź:
     #  * możesz zorganizować pojedynek agentów MCTS o różnych parametrach (np. czasie na wybór
     #    akcji)
     #  * możesz też zmienić rozmiar planszy lub skłonność do eksplorowania (`self.c_coefficient`)
+
+    config1 = {
+        "n_games": 100,
+        "board_shape": (8, 6),
+        "RedPlayerClass": MCTSPlayer,
+        "BluePlayerClass": RandomPlayer,
+        "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
+        "blue_params": {},
+    }
+    config2 = {
+        "n_games": 100,
+        "board_shape": (8, 6),
+        "RedPlayerClass": MCTSPlayer,
+        "BluePlayerClass": MCTSPlayer,
+        "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
+        "blue_params": {"time_limit": 1.0, "c_coefficient": 0.5},
+    }
+
+    print("\nMCTS vs Random\n" + "=" * 60)
+    main(config1)
+
+    print("\nMCTS vs MCTS\n" + "=" * 60)
+    main(config2)
