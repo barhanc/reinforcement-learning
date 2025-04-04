@@ -1,14 +1,15 @@
 from __future__ import annotations
-import collections
+
 import random
+import collections
 
 import numpy as np
 import sklearn.preprocessing as skl_preprocessing
 
 from problem import Action, available_actions, Corner, Driver, Experiment, Environment, State
 
-ALMOST_INFINITE_STEP = 100000
 MAX_LEARNING_STEPS = 500
+ALMOST_INFINITE_STEP = 100000
 
 
 class RandomDriver(Driver):
@@ -40,6 +41,7 @@ class OffPolicyNStepSarsaDriver(Driver):
         self.states: dict[int, State] = dict()
         self.actions: dict[int, Action] = dict()
         self.rewards: dict[int, int] = dict()
+        self._eval: bool = False
 
     def start_attempt(self, state: State) -> Action:
         self.current_step = 0
@@ -50,7 +52,18 @@ class OffPolicyNStepSarsaDriver(Driver):
         self.finished = False
         return action
 
+    def eval(self):
+        self._eval = True
+
+    def train(self):
+        self._eval = False
+
     def control(self, state: State, last_reward: int) -> Action:
+        if self._eval:
+            self.current_step += 1
+            self.finished = self.current_step > MAX_LEARNING_STEPS
+            return self._select_action(self.greedy_policy(state, available_actions(state)))
+
         if self.current_step < self.final_step:
             self.rewards[self._access_index(self.current_step + 1)] = last_reward
             self.states[self._access_index(self.current_step + 1)] = state
@@ -73,7 +86,9 @@ class OffPolicyNStepSarsaDriver(Driver):
             # TODO: Tutaj trzeba zaktualizować tablicę wartościującą akcje Q
             if update_step + self.step_no < self.final_step:
                 return_value += self.discount_factor**self.step_no * self.q[state, action]
-            self.q[state_t, action_t] = self.q[state_t, action_t] + self.step_size * return_value_weight * (return_value - self.q[state_t, action_t])
+            self.q[state_t, action_t] = self.q[state_t, action_t] + self.step_size * return_value_weight * (
+                return_value - self.q[state_t, action_t]
+            )
 
         if update_step == self.final_step - 1:
             self.finished = True
@@ -86,7 +101,7 @@ class OffPolicyNStepSarsaDriver(Driver):
         return_value = 0.0
         for i in range(update_step + 1, min(update_step + self.step_no + 1, self.final_step + 1)):
             reward_i = self.rewards[self._access_index(i)]
-            return_value += self.discount_factor**(i - update_step - 1) * reward_i
+            return_value += self.discount_factor ** (i - update_step - 1) * reward_i
         return return_value
 
     def _return_value_weight(self, update_step):
@@ -95,7 +110,10 @@ class OffPolicyNStepSarsaDriver(Driver):
         for i in range(update_step + 1, min(update_step + self.step_no + 1, self.final_step)):
             state_i = self.states[self._access_index(i)]
             action_i = self.actions[self._access_index(i)]
-            return_value_weight *= self.greedy_policy(state_i, available_actions(state_i))[action_i] / self.epsilon_greedy_policy(state_i, available_actions(state_i))[action_i]
+            return_value_weight *= (
+                self.greedy_policy(state_i, available_actions(state_i))[action_i]
+                / self.epsilon_greedy_policy(state_i, available_actions(state_i))[action_i]
+            )
         return return_value_weight
 
     def finished_learning(self) -> bool:
@@ -113,7 +131,9 @@ class OffPolicyNStepSarsaDriver(Driver):
 
     def epsilon_greedy_policy(self, state: State, actions: list[Action]) -> dict[Action, float]:
         # TODO: tutaj trzeba ustalic prawdopodobieństwa wyboru akcji według polityki ε-zachłannej
-        probabilities = self.experiment_rate * self._random_probabilities(actions) + (1 - self.experiment_rate) * self._greedy_probabilities(state, actions)
+        probabilities = self.experiment_rate * self._random_probabilities(actions) + (
+            1 - self.experiment_rate
+        ) * self._greedy_probabilities(state, actions)
         return {action: probability for action, probability in zip(actions, probabilities)}
 
     def greedy_policy(self, state: State, actions: list[Action]) -> dict[Action, float]:
@@ -146,6 +166,7 @@ def main() -> None:
     # )
 
     experiment = Experiment(
+        name="corner_c",
         environment=Environment(
             corner=Corner(name="corner_c"),
             steering_fail_chance=0.01,
@@ -156,7 +177,7 @@ def main() -> None:
             experiment_rate=0.05,
             discount_factor=1.00,
         ),
-        number_of_episodes=30000,
+        number_of_episodes=6_000,
     )
 
     experiment.run()

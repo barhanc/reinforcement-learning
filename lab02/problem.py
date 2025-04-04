@@ -1,15 +1,19 @@
 from __future__ import annotations
-from abc import abstractmethod
-from dataclasses import dataclass
-import itertools
-import random
-from typing import NamedTuple, Optional, Protocol
 
-import matplotlib.image as mpl_image
-import numpy as np
-from tqdm import tqdm
+import random
+import itertools
 
 import utils
+import pickle
+import numpy as np
+import matplotlib.image as mpl_image
+
+from abc import abstractmethod
+from dataclasses import dataclass
+
+from tqdm import tqdm
+from typing import NamedTuple, Optional, Protocol
+
 
 MIN_VX = 0
 MAX_VX = 3
@@ -39,17 +43,19 @@ class State(NamedTuple):
 
 def available_actions(state: State) -> list[Action]:
     return [
-        action for action in Car.POTENTIAL_ACTIONS if (
-                MIN_VX <= state.v_x + action.a_x <= MAX_VX and
-                MIN_VY <= state.v_y + action.a_y <= MAX_VY and
-                (state.v_x + action.a_x != 0 or state.v_y + action.a_y != 0)
+        action
+        for action in Car.POTENTIAL_ACTIONS
+        if (
+            MIN_VX <= state.v_x + action.a_x <= MAX_VX
+            and MIN_VY <= state.v_y + action.a_y <= MAX_VY
+            and (state.v_x + action.a_x != 0 or state.v_y + action.a_y != 0)
         )
     ]
 
 
 class Corner:
     def __init__(self, name: str) -> None:
-        self.image: np.ndarray = mpl_image.imread(f'corners/{name}.png')
+        self.image: np.ndarray = mpl_image.imread(f"corners/{name}.png")
         self.track: np.ndarray = np.flip(self.image[:, :, 0] + self.image[:, :, 1], 0)
         self.track[self.track == 2.0] = 1.0
         self.starting_positions: set[Position] = self._determine_positions(
@@ -61,15 +67,15 @@ class Corner:
         self.image = np.flip(self.image, 0)
 
     def contains(self, position: Position) -> bool:
-        return (0 < position.x < self.track.shape[0] and
-                0 < position.y < self.track.shape[1] and
-                self.track[position] == 1.0)
+        return (
+            0 < position.x < self.track.shape[0]
+            and 0 < position.y < self.track.shape[1]
+            and self.track[position] == 1.0
+        )
 
     @staticmethod
     def _determine_positions(image: np.ndarray) -> set[Position]:
-        return set(
-            Position(x, y) for (x, y), value in np.ndenumerate(image) if value == 1.0
-        )
+        return set(Position(x, y) for (x, y), value in np.ndenumerate(image) if value == 1.0)
 
 
 class Car:
@@ -122,6 +128,10 @@ class Driver(Protocol):
     def finished_learning(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def eval(self):
+        raise NotImplementedError
+
 
 @dataclass
 class Environment:
@@ -147,6 +157,7 @@ class Environment:
 
 @dataclass
 class Experiment:
+    name: str
     environment: Environment
     driver: Driver
     number_of_episodes: int
@@ -154,11 +165,23 @@ class Experiment:
     penalties: Optional[list] = None  # tutaj będą się gromadzić kary przyznane w kolejnych epizodach
 
     def run(self) -> None:
+        print("Train")
         self.penalties = []
         for _ in tqdm(range(self.number_of_episodes)):
             episode_penalty = self._episode()
             self.penalties.append(episode_penalty)
             self.current_episode_no += 1
+
+        self.save(path=f"train_penalties_experiment_{self.name}.pickle")
+
+        print("Eval")
+        self.driver.eval()
+        for _ in tqdm(range(self.number_of_episodes // 10)):
+            episode_penalty = self._episode()
+            self.penalties.append(episode_penalty)
+            self.current_episode_no += 1
+
+        self.save(path=f"traintest_penalties_experiment_{self.name}.pickle")
 
     def _episode(self) -> int:
         positions = []
@@ -171,6 +194,10 @@ class Experiment:
                 break
         self._draw_episode(positions)
         return car.total_penalties
+
+    def save(self, path: str):
+        with open(path, "wb") as file:
+            pickle.dump(self.penalties, file, protocol=pickle.HIGHEST_PROTOCOL)
 
     def _draw_episode(self, positions: list[Position]) -> None:
         if self.current_episode_no % DRAWING_FREQUENCY == 0:
