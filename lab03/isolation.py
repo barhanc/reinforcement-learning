@@ -1,16 +1,20 @@
-from abc import abstractmethod
-from enum import Enum
-import itertools
-import random
 import time
+import random
+import itertools
+
+from math import sqrt, log
+from enum import Enum
+from abc import abstractmethod
 from typing import Optional, Protocol
+
+from tqdm import trange
 
 
 class Colour(Enum):
-    RED = 'R'
-    BLUE = 'B'
+    RED = "R"
+    BLUE = "B"
 
-    def flip(self) -> 'Colour':
+    def flip(self) -> "Colour":
         return Colour.RED if self == Colour.BLUE else Colour.BLUE
 
 
@@ -26,14 +30,14 @@ class Board:
     def _prepare_board(self):
         for i in range(self.width):
             for j in range(self.height):
-                self.positions[(i, j)] = '.'
+                self.positions[(i, j)] = "."
 
     def __str__(self):
-        representation = '\\ ' + ' '.join([str(i + 1) for i in range(self.width)]) + '\n'
+        representation = "\\ " + " ".join([str(i + 1) for i in range(self.width)]) + "\n"
         for j in range(self.height):
-            representation += (chr(ord('A') + j) + ' ' + ' '.join([self.positions[i, j] for i in range(self.width)]))
+            representation += chr(ord("A") + j) + " " + " ".join([self.positions[i, j] for i in range(self.width)])
             if j < self.height - 1:
-                representation += '\n'
+                representation += "\n"
         return representation
 
     def moves_for(self, current_player: Colour) -> list[tuple[int, int]]:
@@ -41,7 +45,7 @@ class Board:
         player_position = self._player_position(current_player)
         if player_position is None:
             for position in self.positions:
-                if self.positions[position] == '.':
+                if self.positions[position] == ".":
                     result.append(position)
         else:
             directions = list(itertools.product([-1, 0, 1], repeat=2))
@@ -51,7 +55,7 @@ class Board:
                 px, py = px + dx, py + dy
                 while 0 <= px < self.width and 0 <= py < self.height:
                     potential_position = px, py
-                    if self.positions[potential_position] == '.':
+                    if self.positions[potential_position] == ".":
                         result.append(potential_position)
                         px, py = px + dx, py + dy
                     else:
@@ -61,7 +65,7 @@ class Board:
     def apply_move(self, current_player: Colour, move: tuple[int, int]) -> None:
         player_position = self._player_position(current_player)
         if player_position is not None:
-            self.positions[player_position] = '#'
+            self.positions[player_position] = "#"
         self.positions[move] = current_player.value
         self._update_player_position(current_player, move)
 
@@ -82,8 +86,8 @@ class Board:
         return f"{self.width}_{self.height}_{''.join(positions_in_order)}"
 
     @staticmethod
-    def from_state_str(state_str: str) -> 'Board':
-        width, height, positions = state_str.split('_')
+    def from_state_str(state_str: str) -> "Board":
+        width, height, positions = state_str.split("_")
         width, height = int(width), int(height)
         board = Board(width, height)
         for j in range(height):
@@ -96,7 +100,7 @@ class Board:
                     board.blue_position = (i, j)
         return board
 
-    def duplicate(self) -> 'Board':
+    def duplicate(self) -> "Board":
         return self.from_state_str(self.to_state_str())
 
 
@@ -111,16 +115,20 @@ class Player(Protocol):
 
 
 class Game:
-    # TODO: tutaj poznasz zasady tego wariantu gry w izolację, są bardzo proste
-    # zasady:
+    # TODO: tutaj poznasz zasady tego wariantu gry w izolację, są bardzo proste zasady:
     #  * jest dwóch graczy, czerwony i niebieski, czerwony porusza się pierwszy
     #  * każdy gracz ma dokładnie jeden pionek w swoim kolorze ('R' lub 'B')
-    #  * plansza jest prostokątem, w swoim pierwszym ruchu każdy gracz może położyć pionek na jej dowolnym pustym polu
+    #  * plansza jest prostokątem, w swoim pierwszym ruchu każdy gracz może położyć pionek na jej
+    #    dowolnym pustym polu
     #  * w kolejnych ruchach gracze naprzemiennie przesuwają swoje pionki
-    #     * pionki poruszają się jak hetmany szachowe (dowolna liczba pól w poziomie, pionie, lub po skosie)
-    #     * pole, z którego pionek startował jest usuwane z planszy ('.' zastępuje '#') i trwale zablokowane
-    #     * zarówno pionek innego gracza jak i zablokowane pola uniemożliwiają dalszy ruch (nie da się ich przeskoczyć)
-    #  * jeżeli gracz musi wykonać ruch pionkiem, a nie jest to możliwe (każdy z ośmiu kierunków zablokowany)...
+    #     * pionki poruszają się jak hetmany szachowe (dowolna liczba pól w poziomie, pionie, lub po
+    #       skosie)
+    #     * pole, z którego pionek startował jest usuwane z planszy ('.' zastępuje '#') i trwale
+    #       zablokowane
+    #     * zarówno pionek innego gracza jak i zablokowane pola uniemożliwiają dalszy ruch (nie da
+    #       się ich przeskoczyć)
+    #  * jeżeli gracz musi wykonać ruch pionkiem, a nie jest to możliwe (każdy z ośmiu kierunków
+    #    zablokowany)...
     #  * ...to taki gracz przegrywa (a jego przeciwnik wygrywa ;])
     def __init__(self, red: Player, blue: Player, board: Board, current_player: Colour = Colour.RED):
         self.red: Player = red
@@ -180,17 +188,32 @@ class MCTSNode:
         self.c_coefficient: float = c_coefficient
 
     def select(self, final=False) -> tuple[int, int]:
-        # TODO: tutaj należy wybrać (i zwrócić) najlepszą możliwą akcję (w oparciu o aktualną wiedzę)
-        # podpowiedzi:
+        # TODO: tutaj należy wybrać (i zwrócić) najlepszą możliwą akcję (w oparciu o aktualną
+        # wiedzę) podpowiedzi:
         #  * klucze w słowniku `self.children` to pula dostępnych akcji
-        #  * każdą z nich należy ocenić zgodnie z techniką UCB (tak jakby był to problem wielorękiego bandyty)
+        #  * każdą z nich należy ocenić zgodnie z techniką UCB (tak jakby był to problem
+        #    wielorękiego bandyty)
         #  * ocena akcji zależy od:
         #     * jej wartościowania (`self.value`)
         #     * oraz tego jak często była wybierana (`self.times_chosen`) w porównaniu z rodzicem
-        #     * odpowiednie wartości przechowują węzły-dzieci przyporządkowane w słowniku kluczom-akcjom
+        #     * odpowiednie wartości przechowują węzły-dzieci przyporządkowane w słowniku
+        #       kluczom-akcjom
         #  * w przypadku kilku akcji o takiej samej ocenie - wybieramy losowo
-        #  * gdy stosujemy technikę UCB pierwszeństwo mają akcje, które nie były jeszcze nigdy testowane
-        return None
+        #  * gdy stosujemy technikę UCB pierwszeństwo mają akcje, które nie były jeszcze nigdy
+        #    testowane
+
+        if final:
+            return max(self.children, key=lambda action: (self.children[action].times_chosen, random.random()))
+
+        def criterion(action: tuple[int, int]) -> float:
+            value = self.children[action].value
+            if self.children[action].times_chosen == 0:
+                bound = float("inf")
+            else:
+                bound = sqrt(log(self.children[action].times_chosen) / self.times_chosen)
+            return value + self.c_coefficient * bound
+
+        return max(self.children, key=lambda action: (criterion(action), random.random()))
 
     def expand(self) -> None:
         if not self.terminal and self.leaf:
@@ -209,25 +232,41 @@ class MCTSNode:
 
     def simulate(self) -> Colour:
         if not self.terminal:
-            # TODO: w tym węźle rozgrywka nie zakończyła się, więc do ustalenia zwycięzcy potrzebna jest symulacja
-            # podpowiedzi:
-            #  * w tym celu najłatwiej uruchomić osobną, niezależną grę startującą z danego stanu planszy
+            # TODO: w tym węźle rozgrywka nie zakończyła się, więc do ustalenia zwycięzcy potrzebna
+            # jest symulacja podpowiedzi:
+            #  * w tym celu najłatwiej uruchomić osobną, niezależną grę startującą z danego stanu
+            #    planszy
             #  * by sumulacja przebiegała możliwe szybko wykonujemy ją z użyciem losowych agentów
             #  * po jej zakończeniu poznajemy i zwracamy zwycięzcę
-            return None
-        else:
-            return self.current_player.flip()
+
+            game = Game(
+                red=RandomPlayer(),
+                blue=RandomPlayer(),
+                board=self.board.duplicate(),
+                current_player=self.current_player.flip(),
+            )
+            game.run(verbose=False)
+
+            return game.winner
+
+        return self.current_player.flip()
 
     def backpropagate(self, winner: Colour) -> None:
-        # TODO: należy zaktualizować drzewo - wiedząc, że przejście przez ten węzeł skończyło się wygraną danego gracza
-        # podpowiedzi:
+        # TODO: należy zaktualizować drzewo - wiedząc, że przejście przez ten węzeł skończyło się
+        # wygraną danego gracza podpowiedzi:
         #  * przede wszystkim należy zaktualizować licznik odwiedzeń (`self.times_chosen`)
         #  * poza tym, konieczna jest też korekta wartościowania (`self.value`)
         #     * siła korekty powinna zależeć od tego, które to z kolei odwiedziny danego węzła
-        #     * uwaga - fakt, iż np. gracz czerwony wygrał partię ma inny wpływ na wartościowanie jego węzłów...
+        #     * uwaga - fakt, iż np. gracz czerwony wygrał partię ma inny wpływ na wartościowanie
+        #       jego węzłów...
         #     * ...a inny na wartościowanie węzłów, w których ruch musiał wykonać jego przeciwnik
-        #  * warto pamiętać, by po aktualizacji danych węzeł powiadomił o takiej konieczności również swojego rodzica
-        pass
+        #  * warto pamiętać, by po aktualizacji danych węzeł powiadomił o takiej konieczności
+        #    również swojego rodzica
+        self.times_chosen += 1
+        self.value = self.value - 1 / self.times_chosen * (self.value - (winner == self.current_player))
+
+        if self.parent:
+            self.parent.backpropagate(winner)
 
 
 class MCTSPlayer(Player):
@@ -248,9 +287,8 @@ class MCTSPlayer(Player):
             elapsed_time = current_time - start_time
             if elapsed_time >= self.time_limit:
                 break
-
-        action = self.root_node.select(final=True)  # TODO należy zmienić selekcje tak, by wybrała najlepszą akcję
-        # podpowiedź: zamiast UCB wystarczy zwrócić akcję najczęściej odwiedzaną
+        # TODO należy zmienić selekcje tak, by wybrała najlepszą akcję podpowiedź: zamiast UCB wystarczy zwrócić akcję najczęściej odwiedzaną
+        action = self.root_node.select(final=True)
         self._step_down(action)
         return action
 
@@ -278,11 +316,15 @@ def main() -> None:
     red_wins = 0
     blue_wins = 0
 
-    for _ in range(100):
-        board = Board(7, 5)  # TODO: na początek możesz skorzystać z mniejszej planszy (np. 4x4)
-        red_player = RandomPlayer() # TODO: zastąp jednego z agentów wariantem MCTS
+    EPOCHS = 100
+    H, W = 4, 4
+
+    for _ in range(EPOCHS):
+        board = Board(H, W)  # TODO: na początek możesz skorzystać z mniejszej planszy (np. 4x4)
+        red_player = RandomPlayer()  # TODO: zastąp jednego z agentów wariantem MCTS
         # podpowiedź: np. takim `red_player = MCTSPlayer(0.2, 0.5)`
-        blue_player = RandomPlayer()
+        # blue_player = RandomPlayer()
+        blue_player = MCTSPlayer(time_limit=0.2, c_coefficient=0.5)
         game = Game(red_player, blue_player, board)
         game.run(verbose=True)  # TODO: jeżeli nie chcesz czytać na konsoli zapisu partii, skorzystaj z `verbose=False`
 
@@ -294,8 +336,9 @@ def main() -> None:
     print(red_wins, blue_wins)  # TODO: jeżeli wszystko poszło dobrze, to agent MCTS powtarzalnie wygrywa z losowym
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()  # TODO: jeżeli podstawowy eksperyment zakończył się sukcesem to sprawdź inne jego warianty
     # podpowiedź:
-    #  * możesz zorganizować pojedynek agentów MCTS o różnych parametrach (np. czasie na wybór akcji)
+    #  * możesz zorganizować pojedynek agentów MCTS o różnych parametrach (np. czasie na wybór
+    #    akcji)
     #  * możesz też zmienić rozmiar planszy lub skłonność do eksplorowania (`self.c_coefficient`)
