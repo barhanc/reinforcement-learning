@@ -253,14 +253,14 @@ def evaluate_learner(
     potential_hits: dict[str, float] | Sequence[dict[str, float]],
     time_steps: int,
     trials_per_learner: int,
-    bandit_class: type[KArmedBandit] = TopHitBandit,
+    BanditClass: type[KArmedBandit] = TopHitBandit,
     **bandit_kwargs,
 ) -> NDArray:
 
     runs_rewards = []
 
     for _ in range(trials_per_learner):
-        bandit = bandit_class(potential_hits, **bandit_kwargs)
+        bandit = BanditClass(potential_hits, **bandit_kwargs)
         problem = BanditProblem(time_steps=time_steps, bandit=bandit, learner=learner)
         rewards = problem.run()
         runs_rewards.append(rewards)
@@ -601,7 +601,7 @@ def task4():
             potential_hits=potential_hits,
             time_steps=TIME_STEPS,
             trials_per_learner=TRIALS_PER_LEARNER,
-            bandit_class=DriftingTopHitBandit,
+            BanditClass=DriftingTopHitBandit,
         )
         mean = runs_rewards.cumsum(axis=1).mean(axis=0)
         std = runs_rewards.cumsum(axis=1).std(axis=0)
@@ -631,7 +631,7 @@ def task4():
 
 
 if __name__ == "__main__":
-    # task1()
+    task1()
     # task2()
     # task3()
-    task4()
+    # task4()
