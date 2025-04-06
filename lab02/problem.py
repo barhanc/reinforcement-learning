@@ -4,15 +4,15 @@ import random
 import itertools
 
 import utils
-import pickle
+
 import numpy as np
 import matplotlib.image as mpl_image
 
 from abc import abstractmethod
 from dataclasses import dataclass
+from typing import NamedTuple, Optional, Protocol
 
 from tqdm import tqdm
-from typing import NamedTuple, Optional, Protocol
 
 
 MIN_VX = 0
@@ -128,10 +128,6 @@ class Driver(Protocol):
     def finished_learning(self) -> bool:
         raise NotImplementedError
 
-    @abstractmethod
-    def eval(self):
-        raise NotImplementedError
-
 
 @dataclass
 class Environment:
@@ -157,31 +153,35 @@ class Environment:
 
 @dataclass
 class Experiment:
-    name: str
     environment: Environment
     driver: Driver
     number_of_episodes: int
     current_episode_no: int = 0
     penalties: Optional[list] = None  # tutaj będą się gromadzić kary przyznane w kolejnych epizodach
+    verbose: bool = True
+    savedir: str = "plots"
 
-    def run(self) -> None:
-        print("Train")
+    def run(self) -> float:
         self.penalties = []
-        for _ in tqdm(range(self.number_of_episodes)):
+
+        self.driver.eval = False
+        for _ in tqdm(range(self.number_of_episodes), disable=not self.verbose):
             episode_penalty = self._episode()
             self.penalties.append(episode_penalty)
             self.current_episode_no += 1
 
-        self.save(path=f"train_penalties_experiment_{self.name}.pickle")
+        # evaluate the trained driver
+        self.driver.eval = True
+        number_of_evals = self.number_of_episodes // 10
+        time = 0
 
-        print("Eval")
-        self.driver.eval()
-        for _ in tqdm(range(self.number_of_episodes // 10)):
+        for _ in tqdm(range(number_of_evals), disable=not self.verbose):
             episode_penalty = self._episode()
+            time -= episode_penalty
             self.penalties.append(episode_penalty)
             self.current_episode_no += 1
 
-        self.save(path=f"traintest_penalties_experiment_{self.name}.pickle")
+        return time / number_of_evals
 
     def _episode(self) -> int:
         positions = []
@@ -192,14 +192,13 @@ class Experiment:
             if car.driver.finished_learning():
                 positions.append(car.position())
                 break
-        self._draw_episode(positions)
-        return car.total_penalties
 
-    def save(self, path: str):
-        with open(path, "wb") as file:
-            pickle.dump(self.penalties, file, protocol=pickle.HIGHEST_PROTOCOL)
+        if self.verbose:
+            self._draw_episode(positions)
+
+        return car.total_penalties
 
     def _draw_episode(self, positions: list[Position]) -> None:
         if self.current_episode_no % DRAWING_FREQUENCY == 0:
-            utils.draw_episode(self.environment.corner.image, positions, self.current_episode_no)
-            utils.draw_penalties_plot(self.penalties, AVERAGING_WINDOW_SIZE, self.current_episode_no)
+            utils.draw_episode(self.environment.corner.image, positions, self.current_episode_no, self.savedir)
+            utils.draw_penalties_plot(self.penalties, AVERAGING_WINDOW_SIZE, self.current_episode_no, self.savedir)

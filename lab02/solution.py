@@ -4,8 +4,14 @@ import random
 import collections
 
 import numpy as np
+import matplotlib.pyplot as plt
 import sklearn.preprocessing as skl_preprocessing
 
+from itertools import product
+from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
+
+from tqdm import tqdm
 from problem import Action, available_actions, Corner, Driver, Experiment, Environment, State
 
 MAX_LEARNING_STEPS = 500
@@ -41,7 +47,7 @@ class OffPolicyNStepSarsaDriver(Driver):
         self.states: dict[int, State] = dict()
         self.actions: dict[int, Action] = dict()
         self.rewards: dict[int, int] = dict()
-        self._eval: bool = False
+        self.eval: bool = False
 
     def start_attempt(self, state: State) -> Action:
         self.current_step = 0
@@ -52,14 +58,8 @@ class OffPolicyNStepSarsaDriver(Driver):
         self.finished = False
         return action
 
-    def eval(self):
-        self._eval = True
-
-    def train(self):
-        self._eval = False
-
     def control(self, state: State, last_reward: int) -> Action:
-        if self._eval:
+        if self.eval:
             self.current_step += 1
             self.finished = self.current_step > MAX_LEARNING_STEPS
             return self._select_action(self.greedy_policy(state, available_actions(state)))
@@ -86,9 +86,9 @@ class OffPolicyNStepSarsaDriver(Driver):
             # TODO: Tutaj trzeba zaktualizować tablicę wartościującą akcje Q
             if update_step + self.step_no < self.final_step:
                 return_value += self.discount_factor**self.step_no * self.q[state, action]
-            self.q[state_t, action_t] = self.q[state_t, action_t] + self.step_size * return_value_weight * (
-                return_value - self.q[state_t, action_t]
-            )
+
+            delta = return_value_weight * (return_value - self.q[state_t, action_t])
+            self.q[state_t, action_t] += self.step_size * delta
 
         if update_step == self.final_step - 1:
             self.finished = True
@@ -96,24 +96,34 @@ class OffPolicyNStepSarsaDriver(Driver):
         self.current_step += 1
         return action
 
-    def _return_value(self, update_step):
+    def _return_value(self, update_step: int) -> float:
         # TODO: Tutaj trzeba policzyć zwrot G
         return_value = 0.0
-        for i in range(update_step + 1, min(update_step + self.step_no + 1, self.final_step + 1)):
+        t_min = update_step + 1
+        t_max = min(update_step + self.step_no + 1, self.final_step + 1)
+
+        for i in range(t_min, t_max):
             reward_i = self.rewards[self._access_index(i)]
             return_value += self.discount_factor ** (i - update_step - 1) * reward_i
+
         return return_value
 
-    def _return_value_weight(self, update_step):
-        # TODO: Tutaj trzeba policzyć korektę na różne prawdopodobieństwa ρ (ponieważ uczymy poza-polityką)
+    def _return_value_weight(self, update_step: int) -> float:
+        # TODO: Tutaj trzeba policzyć korektę na różne prawdopodobieństwa p
+        # (ponieważ uczymy poza-polityką)
         return_value_weight = 1.0
-        for i in range(update_step + 1, min(update_step + self.step_no + 1, self.final_step)):
+        t_min = update_step + 1
+        t_max = min(update_step + self.step_no, self.final_step)
+
+        for i in range(t_min, t_max):
             state_i = self.states[self._access_index(i)]
             action_i = self.actions[self._access_index(i)]
-            return_value_weight *= (
-                self.greedy_policy(state_i, available_actions(state_i))[action_i]
-                / self.epsilon_greedy_policy(state_i, available_actions(state_i))[action_i]
-            )
+
+            p = self.greedy_policy(state_i, available_actions(state_i))
+            b = self.epsilon_greedy_policy(state_i, available_actions(state_i))
+
+            return_value_weight *= p[action_i] / b[action_i]
+
         return return_value_weight
 
     def finished_learning(self) -> bool:
@@ -130,11 +140,12 @@ class OffPolicyNStepSarsaDriver(Driver):
         return actions[i]
 
     def epsilon_greedy_policy(self, state: State, actions: list[Action]) -> dict[Action, float]:
-        # TODO: tutaj trzeba ustalic prawdopodobieństwa wyboru akcji według polityki ε-zachłannej
-        probabilities = self.experiment_rate * self._random_probabilities(actions) + (
-            1 - self.experiment_rate
-        ) * self._greedy_probabilities(state, actions)
-        return {action: probability for action, probability in zip(actions, probabilities)}
+        # TODO: tutaj trzeba ustalic prawdopodobieństwa wyboru akcji według polityki ϵ-zachłannej
+        eps = self.experiment_rate
+        p_random = self._random_probabilities(actions)
+        p_greedy = self._greedy_probabilities(state, actions)
+        probas = eps * p_random + (1 - eps) * p_greedy
+        return {action: proba for action, proba in zip(actions, probas)}
 
     def greedy_policy(self, state: State, actions: list[Action]) -> dict[Action, float]:
         probabilities = self._greedy_probabilities(state, actions)
@@ -155,32 +166,103 @@ class OffPolicyNStepSarsaDriver(Driver):
         return skl_preprocessing.normalize(probabilities.reshape(1, -1), norm="l1")[0]
 
 
-def main() -> None:
-    # experiment = Experiment(
-    #     environment=Environment(
-    #         corner=Corner(name="corner_b"),
-    #         steering_fail_chance=0.01,
-    #     ),
-    #     driver=RandomDriver(),
-    #     number_of_episodes=100,
-    # )
-
+def worker(n: int, α: float) -> tuple[int, float, float]:
     experiment = Experiment(
-        name="corner_c",
         environment=Environment(
             corner=Corner(name="corner_c"),
             steering_fail_chance=0.01,
         ),
         driver=OffPolicyNStepSarsaDriver(
-            step_no=5,
-            step_size=0.3,
+            step_no=n,
+            step_size=α,
             experiment_rate=0.05,
             discount_factor=1.00,
         ),
-        number_of_episodes=6_000,
+        number_of_episodes=10,
+        verbose=False,
     )
+    t = experiment.run()
+    return n, α, t
 
-    experiment.run()
+
+def main():
+    # CORNER B
+    # =====================================================
+    # experiment = Experiment(
+    #     environment=Environment(
+    #         corner=Corner(name="corner_b"),
+    #         steering_fail_chance=0.01,
+    #     ),
+    #     driver=OffPolicyNStepSarsaDriver(
+    #         step_no=5,
+    #         step_size=0.3,
+    #         experiment_rate=0.05,
+    #         discount_factor=1.00,
+    #     ),
+    #     number_of_episodes=4_000,
+    #     savedir="plots_corner_b",
+    # )
+    # print("CORNER B")
+    # time = experiment.run()
+    # print(f"Average time = {time:.2f}\n")
+
+    # CORNER C
+    # =====================================================
+    # experiment = Experiment(
+    #     environment=Environment(
+    #         corner=Corner(name="corner_c"),
+    #         steering_fail_chance=0.01,
+    #     ),
+    #     driver=OffPolicyNStepSarsaDriver(
+    #         step_no=5,
+    #         step_size=0.3,
+    #         experiment_rate=0.05,
+    #         discount_factor=1.00,
+    #     ),
+    #     number_of_episodes=4_000,
+    #     savedir="plots_corner_c",
+    # )
+    # print("CORNER C")
+    # time = experiment.run()
+    # print(f"Average time = {time:.2f}\n")
+
+    # PARAMETRIC STUDY
+    # =====================================================
+    ns = [2, 4, 8, 16]
+    αs = np.arange(0, 1.1, 0.1)
+    results = defaultdict(lambda: None)
+
+    with ProcessPoolExecutor() as executor:
+        for n, α, t in tqdm(executor.map(worker, *zip(*product(ns, αs))), total=len(ns) * len(αs)):
+            results[n, α] = t
+
+    # --- Plot results
+    for n in ns:
+        plt.plot(αs, [results[n, α] for α in αs], label=n)
+    plt.xlabel(r"$\alpha$")
+    plt.ylabel("Average time")
+    plt.legend()
+    plt.savefig("parametric_study.png", dpi=500)
+
+    # CORNER D
+    # =====================================================
+    experiment = Experiment(
+        environment=Environment(
+            corner=Corner(name="corner_d"),
+            steering_fail_chance=0.01,
+        ),
+        driver=OffPolicyNStepSarsaDriver(
+            step_no=5,
+            step_size=0.8,
+            experiment_rate=0.05,
+            discount_factor=1.00,
+        ),
+        number_of_episodes=10_000,
+        savedir="plots_corner_d",
+    )
+    print("CORNER D")
+    time = experiment.run()
+    print(f"Average time = {time:.2f}\n")
 
 
 if __name__ == "__main__":
