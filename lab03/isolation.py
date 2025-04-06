@@ -188,7 +188,7 @@ class MCTSNode:
         self.current_player: Colour = current_player
         self.c_coefficient: float = c_coefficient
 
-    def select(self, final=False) -> tuple[int, int]:
+    def select(self, final: bool = False) -> tuple[int, int]:
         # TODO: tutaj należy wybrać (i zwrócić) najlepszą możliwą akcję (w oparciu o aktualną
         # wiedzę)
         # HINT:
@@ -396,9 +396,20 @@ if __name__ == "__main__":
         "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
         "blue_params": {"time_limit": 1.0, "c_coefficient": 0.5},
     }
+    config3 = {
+        "n_games": 100,
+        "board_shape": (8, 6),
+        "RedPlayerClass": MCTSPlayer,
+        "BluePlayerClass": MCTSPlayer,
+        "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
+        "blue_params": {"time_limit": 0.2, "c_coefficient": sqrt(2)},
+    }
 
     print("\nMCTS vs Random\n" + "=" * 60)
     main(config1)
 
     print("\nMCTS vs MCTS\n" + "=" * 60)
     main(config2)
+
+    print("\nMCTS vs MCTS\n" + "=" * 60)
+    main(config3)
