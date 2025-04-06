@@ -343,8 +343,7 @@ def main(config: dict) -> None:
     )
 
     with ProcessPoolExecutor() as executor:
-        results = executor.map(play, games, chunksize=1)
-        for game in tqdm(results, total=n_games):
+        for game in tqdm(executor.map(play, games), total=n_games):
             if game.winner == Colour.RED:
                 red_wins += 1
             else:
