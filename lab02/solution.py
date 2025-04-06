@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pickle
 import random
 import collections
 
@@ -12,6 +13,7 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
 from tqdm import tqdm
+from labellines import labelLines
 from problem import Action, available_actions, Corner, Driver, Experiment, Environment, State
 
 MAX_LEARNING_STEPS = 500
@@ -178,7 +180,7 @@ def worker(n: int, α: float) -> tuple[int, float, float]:
             experiment_rate=0.05,
             discount_factor=1.00,
         ),
-        number_of_episodes=10,
+        number_of_episodes=10_000,
         verbose=False,
     )
     t = experiment.run()
@@ -230,39 +232,43 @@ def main():
     # =====================================================
     ns = [2, 4, 8, 16]
     αs = np.arange(0, 1.1, 0.1)
-    results = defaultdict(lambda: None)
+    results = {(n, α): None for n, α in product(ns, αs)}
 
     with ProcessPoolExecutor() as executor:
         for n, α, t in tqdm(executor.map(worker, *zip(*product(ns, αs))), total=len(ns) * len(αs)):
             results[n, α] = t
 
+    with open("results.pickle", "wb") as file:
+        pickle.dump(results, file, protocol=pickle.HIGHEST_PROTOCOL)
+
     # --- Plot results
     for n in ns:
-        plt.plot(αs, [results[n, α] for α in αs], label=n)
+        plt.plot(αs, [results[n, α] for α in αs], label=r"$n=$" + f"{n}")
+    labelLines(plt.gca().get_lines())
     plt.xlabel(r"$\alpha$")
-    plt.ylabel("Average time")
-    plt.legend()
+    plt.ylabel("Average corner time")
+    plt.title("Corner C")
     plt.savefig("parametric_study.png", dpi=500)
 
     # CORNER D
     # =====================================================
-    experiment = Experiment(
-        environment=Environment(
-            corner=Corner(name="corner_d"),
-            steering_fail_chance=0.01,
-        ),
-        driver=OffPolicyNStepSarsaDriver(
-            step_no=5,
-            step_size=0.8,
-            experiment_rate=0.05,
-            discount_factor=1.00,
-        ),
-        number_of_episodes=10_000,
-        savedir="plots_corner_d",
-    )
-    print("CORNER D")
-    time = experiment.run()
-    print(f"Average time = {time:.2f}\n")
+    # experiment = Experiment(
+    #     environment=Environment(
+    #         corner=Corner(name="corner_d"),
+    #         steering_fail_chance=0.01,
+    #     ),
+    #     driver=OffPolicyNStepSarsaDriver(
+    #         step_no=5,
+    #         step_size=0.8,
+    #         experiment_rate=0.05,
+    #         discount_factor=1.00,
+    #     ),
+    #     number_of_episodes=10_000,
+    #     savedir="plots_corner_d",
+    # )
+    # print("CORNER D")
+    # time = experiment.run()
+    # print(f"Average time = {time:.2f}\n")
 
 
 if __name__ == "__main__":
