@@ -12,7 +12,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import NamedTuple, Optional, Protocol
 
-from tqdm import tqdm
+from tqdm import trange
 
 
 MIN_VX = 0
@@ -165,7 +165,7 @@ class Experiment:
         self.penalties = []
 
         self.driver.eval = False
-        for _ in tqdm(range(self.number_of_episodes), disable=not self.verbose):
+        for _ in trange(self.number_of_episodes, disable=not self.verbose):
             episode_penalty = self._episode()
             self.penalties.append(episode_penalty)
             self.current_episode_no += 1
@@ -175,7 +175,7 @@ class Experiment:
         number_of_evals = self.number_of_episodes // 10
         time = 0
 
-        for _ in tqdm(range(number_of_evals), disable=not self.verbose):
+        for _ in trange(number_of_evals, disable=not self.verbose):
             episode_penalty = self._episode()
             time -= episode_penalty
             self.penalties.append(episode_penalty)

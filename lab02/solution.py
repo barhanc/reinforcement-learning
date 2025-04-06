@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 import sklearn.preprocessing as skl_preprocessing
 
 from itertools import product
-from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
 from tqdm import tqdm
 from labellines import labelLines
+
 from problem import Action, available_actions, Corner, Driver, Experiment, Environment, State
 
 MAX_LEARNING_STEPS = 500
@@ -143,10 +143,10 @@ class OffPolicyNStepSarsaDriver(Driver):
 
     def epsilon_greedy_policy(self, state: State, actions: list[Action]) -> dict[Action, float]:
         # TODO: tutaj trzeba ustalic prawdopodobieństwa wyboru akcji według polityki ϵ-zachłannej
-        eps = self.experiment_rate
+        ϵ = self.experiment_rate
         p_random = self._random_probabilities(actions)
         p_greedy = self._greedy_probabilities(state, actions)
-        probas = eps * p_random + (1 - eps) * p_greedy
+        probas = ϵ * p_random + (1 - ϵ) * p_greedy
         return {action: proba for action, proba in zip(actions, probas)}
 
     def greedy_policy(self, state: State, actions: list[Action]) -> dict[Action, float]:
