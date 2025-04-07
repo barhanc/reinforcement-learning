@@ -162,7 +162,7 @@ class Experiment:
     plot: bool = False
     savedir: str = "plots"
 
-    def run(self) -> float:
+    def run(self, eval: bool = False) -> float:
         self.penalties = []
 
         self.driver.eval = False
@@ -171,23 +171,24 @@ class Experiment:
             self.penalties.append(episode_penalty)
             self.current_episode_no += 1
 
-        # evaluate the trained driver
+        if not eval:
+            return np.mean([-penalty for penalty in self.penalties])
+
+        # Evaluate the trained driver
         self.driver.eval = True
         number_of_evals = self.number_of_episodes // 10
-        time = 0
 
         for _ in trange(number_of_evals, disable=not self.verbose):
             episode_penalty = self._episode()
-            time -= episode_penalty
             self.penalties.append(episode_penalty)
             self.current_episode_no += 1
 
-        return time / number_of_evals
+        return np.mean([-penalty for penalty in self.penalties[-number_of_evals:]])
 
     def _episode(self) -> int:
         positions = []
         car = self.environment.spawn_car(self.driver)
-        
+
         while True:
             positions.append(car.position())
             car.drive()

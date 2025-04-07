@@ -165,28 +165,32 @@ class OffPolicyNStepSarsaDriver(Driver):
 from concurrent.futures import ProcessPoolExecutor
 
 
-def conduct_experiment(n: int, α: float) -> tuple[int, float, float | None]:
+def conduct_experiment(
+    n: int,
+    α: float,
+    corner_name: str = "corner_c",
+    number_of_episodes: int = 1_000,
+) -> tuple[int, float, float | None]:
+    experiment = Experiment(
+        environment=Environment(
+            corner=Corner(name=corner_name),
+            steering_fail_chance=0.01,
+        ),
+        driver=OffPolicyNStepSarsaDriver(
+            step_no=n,
+            step_size=α,
+            experiment_rate=0.05,
+            discount_factor=1.00,
+        ),
+        number_of_episodes=number_of_episodes,
+        verbose=True,
+        plot=False,
+    )
     try:
-        experiment = Experiment(
-            environment=Environment(
-                corner=Corner(name="corner_c"),
-                steering_fail_chance=0.01,
-            ),
-            driver=OffPolicyNStepSarsaDriver(
-                step_no=n,
-                step_size=α,
-                experiment_rate=0.05,
-                discount_factor=1.00,
-            ),
-            number_of_episodes=10_000,
-            verbose=True,
-            plot=False,
-        )
-        t = experiment.run()
+        t = experiment.run(eval=False)
     except Exception as e:
         print(e)
         t = None
-
     return n, α, t
 
 
@@ -204,11 +208,11 @@ def main():
     #         experiment_rate=0.05,
     #         discount_factor=1.00,
     #     ),
-    #     number_of_episodes=4_000,
+    #     number_of_episodes=10_000,
     #     savedir="plots_corner_b",
     # )
     # print("CORNER B")
-    # time = experiment.run()
+    # time = experiment.run(eval=True)
     # print(f"Average time = {time:.2f}\n")
 
     # CORNER C
@@ -224,57 +228,59 @@ def main():
     #         experiment_rate=0.05,
     #         discount_factor=1.00,
     #     ),
-    #     number_of_episodes=4_000,
+    #     number_of_episodes=10_000,
     #     savedir="plots_corner_c",
     # )
     # print("CORNER C")
-    # time = experiment.run()
+    # time = experiment.run(eval=True)
     # print(f"Average time = {time:.2f}\n")
 
     # PARAMETRIC STUDY
     # =====================================================
-    # ns = [2, 4]
-    # αs = np.arange(0.1, 1.1, 0.1)
-    # results = {(n, α): None for n, α in product(ns, αs)}
+    # Compute average time for corner C over first 1_000 episodes for different values of `step_no`
+    # and `step_size`
+    ns = [2, 4, 8, 16]
+    αs = np.arange(0.1, 1.1, 0.1)
+    results = {(n, α): None for n, α in product(ns, αs)}
 
-    # with ProcessPoolExecutor() as executor:
-    #     for n, α, t in executor.map(conduct_experiment, *zip(*product(ns, αs))):
-    #         results[n, α] = t
+    with ProcessPoolExecutor() as executor:
+        for n, α, t in executor.map(conduct_experiment, *zip(*product(ns, αs))):
+            results[n, α] = t
 
-    # with open("results.pickle", "wb") as file:
-    #     pickle.dump(results, file, protocol=pickle.HIGHEST_PROTOCOL)
+    with open("results.pickle", "wb") as file:
+        pickle.dump(results, file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # # --- Plot results
-    # for n in ns:
-    #     plt.plot(αs, [results[n, α] for α in αs], label=r"$n=$" + f"{n}")
+    # --- Plot results
+    for n in ns:
+        plt.plot(αs, [results[n, α] for α in αs], label=r"$n=$" + f"{n}")
 
-    # labelLines(plt.gca().get_lines())
-    # plt.xlabel(r"$\alpha$")
-    # plt.ylabel("Average corner time")
-    # plt.title("Corner C")
-    # plt.savefig("parametric_study.png", dpi=500)
+    labelLines(plt.gca().get_lines())
+    plt.xlabel(r"$\alpha$")
+    plt.ylabel("Average corner time")
+    plt.title("Corner C")
+    plt.savefig("parametric_study.png", dpi=500)
 
     # CORNER D
     # =====================================================
-    experiment = Experiment(
-        environment=Environment(
-            corner=Corner(name="corner_d"),
-            steering_fail_chance=0.01,
-        ),
-        driver=OffPolicyNStepSarsaDriver(
-            step_no=5,
-            step_size=0.8,
-            experiment_rate=0.05,
-            discount_factor=1.00,
-        ),
-        number_of_episodes=30_000,
-        savedir="plots_corner_d",
-        verbose=True,
-        plot=True,
-    )
-    print("CORNER D")
-    time = experiment.run()
-    print(f"Average time = {time:.2f}\n")
+    # experiment = Experiment(
+    #     environment=Environment(
+    #         corner=Corner(name="corner_d"),
+    #         steering_fail_chance=0.01,
+    #     ),
+    #     driver=OffPolicyNStepSarsaDriver(
+    #         step_no=5,
+    #         step_size=0.8,
+    #         experiment_rate=0.05,
+    #         discount_factor=1.00,
+    #     ),
+    #     number_of_episodes=30_000,
+    #     savedir="plots_corner_d",
+    #     verbose=True,
+    #     plot=True,
+    # )
+    # print("CORNER D")
+    # time = experiment.run(eval=True)
+    # print(f"Average time = {time:.2f}\n")
 
 
 if __name__ == "__main__":
