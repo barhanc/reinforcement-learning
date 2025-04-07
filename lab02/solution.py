@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import pickle
 import random
 import collections
@@ -106,8 +107,8 @@ class OffPolicyNStepSarsaDriver(Driver):
         return return_value
 
     def _return_value_weight(self, update_step: int) -> float:
-        # TODO: Tutaj trzeba policzyć korektę na różne prawdopodobieństwa p
-        # (ponieważ uczymy poza-polityką)
+        # TODO: Tutaj trzeba policzyć korektę na różne prawdopodobieństwa ρ (ponieważ uczymy
+        # poza-polityką)
         return_value_weight = 1.0
         t_min = update_step + 1
         t_max = min(update_step + self.step_no, self.final_step)
@@ -115,11 +116,9 @@ class OffPolicyNStepSarsaDriver(Driver):
         for i in range(t_min, t_max):
             state_i = self.states[self._access_index(i)]
             action_i = self.actions[self._access_index(i)]
-
-            p = self.greedy_policy(state_i, available_actions(state_i))
+            π = self.greedy_policy(state_i, available_actions(state_i))
             b = self.epsilon_greedy_policy(state_i, available_actions(state_i))
-
-            return_value_weight *= p[action_i] / b[action_i]
+            return_value_weight *= π[action_i] / b[action_i]
 
         return return_value_weight
 
@@ -163,27 +162,32 @@ class OffPolicyNStepSarsaDriver(Driver):
         return skl_preprocessing.normalize(probabilities.reshape(1, -1), norm="l1")[0]
 
 
-def worker(n: int, α: float) -> tuple[int, float, float]:
-    experiment = Experiment(
-        environment=Environment(
-            corner=Corner(name="corner_c"),
-            steering_fail_chance=0.01,
-        ),
-        driver=OffPolicyNStepSarsaDriver(
-            step_no=n,
-            step_size=α,
-            experiment_rate=0.05,
-            discount_factor=1.00,
-        ),
-        number_of_episodes=10_000,
-        verbose=True,
-        plot=False,
-    )
-    t = experiment.run()
-    return n, α, t
-
-
 from concurrent.futures import ProcessPoolExecutor
+
+
+def conduct_experiment(n: int, α: float) -> tuple[int, float, float | None]:
+    try:
+        experiment = Experiment(
+            environment=Environment(
+                corner=Corner(name="corner_c"),
+                steering_fail_chance=0.01,
+            ),
+            driver=OffPolicyNStepSarsaDriver(
+                step_no=n,
+                step_size=α,
+                experiment_rate=0.05,
+                discount_factor=1.00,
+            ),
+            number_of_episodes=10_000,
+            verbose=True,
+            plot=False,
+        )
+        t = experiment.run()
+    except Exception as e:
+        print(e)
+        t = None
+
+    return n, α, t
 
 
 def main():
@@ -229,63 +233,48 @@ def main():
 
     # PARAMETRIC STUDY
     # =====================================================
-    ns = [2, 4, 8, 16]
-    αs = np.arange(0.1, 1.1, 0.1)
-    results = {(n, α): None for n, α in product(ns, αs)}
+    # ns = [2, 4]
+    # αs = np.arange(0.1, 1.1, 0.1)
+    # results = {(n, α): None for n, α in product(ns, αs)}
 
-    # for i, (n, α) in enumerate(product(ns, αs)):
-    #     print(f"\nExperiment {i+1:3d}/{len(ns)*len(αs):3d} | n={n}, α={α:.1f}\n" + "=" * 60)
-    #     experiment = Experiment(
-    #         environment=Environment(
-    #             corner=Corner(name="corner_c"),
-    #             steering_fail_chance=0.01,
-    #         ),
-    #         driver=OffPolicyNStepSarsaDriver(
-    #             step_no=n,
-    #             step_size=α,
-    #             experiment_rate=0.05,
-    #             discount_factor=1.00,
-    #         ),
-    #         number_of_episodes=10_000,
-    #         verbose=True,
-    #     )
-    #     results[n, α] = experiment.run()
+    # with ProcessPoolExecutor() as executor:
+    #     for n, α, t in executor.map(conduct_experiment, *zip(*product(ns, αs))):
+    #         results[n, α] = t
 
-    with ProcessPoolExecutor() as executor:
-        for n, α, t in executor.map(worker, *zip(*product(ns, αs))):
-            results[n, α] = t
+    # with open("results.pickle", "wb") as file:
+    #     pickle.dump(results, file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open("results.pickle", "wb") as file:
-        pickle.dump(results, file, protocol=pickle.HIGHEST_PROTOCOL)
+    # # --- Plot results
+    # for n in ns:
+    #     plt.plot(αs, [results[n, α] for α in αs], label=r"$n=$" + f"{n}")
 
-    # --- Plot results
-    for n in ns:
-        plt.plot(αs, [results[n, α] for α in αs], label=r"$n=$" + f"{n}")
-    labelLines(plt.gca().get_lines())
-    plt.xlabel(r"$\alpha$")
-    plt.ylabel("Average corner time")
-    plt.title("Corner C")
-    plt.savefig("parametric_study.png", dpi=500)
+    # labelLines(plt.gca().get_lines())
+    # plt.xlabel(r"$\alpha$")
+    # plt.ylabel("Average corner time")
+    # plt.title("Corner C")
+    # plt.savefig("parametric_study.png", dpi=500)
 
     # CORNER D
     # =====================================================
-    # experiment = Experiment(
-    #     environment=Environment(
-    #         corner=Corner(name="corner_d"),
-    #         steering_fail_chance=0.01,
-    #     ),
-    #     driver=OffPolicyNStepSarsaDriver(
-    #         step_no=5,
-    #         step_size=0.8,
-    #         experiment_rate=0.05,
-    #         discount_factor=1.00,
-    #     ),
-    #     number_of_episodes=10_000,
-    #     savedir="plots_corner_d",
-    # )
-    # print("CORNER D")
-    # time = experiment.run()
-    # print(f"Average time = {time:.2f}\n")
+    experiment = Experiment(
+        environment=Environment(
+            corner=Corner(name="corner_d"),
+            steering_fail_chance=0.01,
+        ),
+        driver=OffPolicyNStepSarsaDriver(
+            step_no=5,
+            step_size=0.8,
+            experiment_rate=0.05,
+            discount_factor=1.00,
+        ),
+        number_of_episodes=30_000,
+        savedir="plots_corner_d",
+        verbose=True,
+        plot=True,
+    )
+    print("CORNER D")
+    time = experiment.run()
+    print(f"Average time = {time:.2f}\n")
 
 
 if __name__ == "__main__":

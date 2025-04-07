@@ -269,7 +269,8 @@ class MCTSNode:
 
         # NOTE: Reward is 1 if winner is the color of the **parent** node and 0 otherwise. This is
         # because we select the action of the parent based on the `value` field of the children
-        # nodes and thus we want higher value <=> color of the parent node is more likely to win.
+        # nodes and thus we want higher value to mean that color of the parent node is more likely
+        # to win.
         self.times_chosen += 1
         self.value += 1 / self.times_chosen * ((winner != self.current_player) - self.value)
 
@@ -321,18 +322,23 @@ class MCTSPlayer(Player):
         self.root_node = new_root
 
 
-def play(game: Game, verbose: bool = False) -> Game:
+def _run(game: Game, verbose: bool = False) -> Game:
     game.run(verbose)
     return game
 
 
-def main(config: dict) -> None:
+def main(config: dict) -> float:
+    # TODO: na początek możesz skorzystać z mniejszej planszy (np. 4x4)
     n_games = config["n_games"]
     board_shape = config["board_shape"]
+
+    # TODO: zastąp jednego z agentów wariantem MCTS
+    # HINT: np. takim `red_player = MCTSPlayer(0.2, 0.5)`
     RedPlayerClass = config["RedPlayerClass"]
     BluePlayerClass = config["BluePlayerClass"]
 
     red_wins, blue_wins = 0, 0
+
     games = (
         Game(
             red=RedPlayerClass(**config["red_params"]),
@@ -342,34 +348,18 @@ def main(config: dict) -> None:
         for _ in range(n_games)
     )
 
+    # TODO: jeżeli nie chcesz czytać na konsoli zapisu partii, skorzystaj z `verbose=False`
     with ProcessPoolExecutor() as executor:
-        for game in tqdm(executor.map(play, games), total=n_games):
+        for game in tqdm(executor.map(_run, games), total=n_games):
             if game.winner == Colour.RED:
                 red_wins += 1
             else:
                 blue_wins += 1
 
-    # for _ in trange(n_games):
-    #     # TODO: na początek możesz skorzystać z mniejszej planszy (np. 4x4)
-    #     board = Board(*board_shape)
-
-    #     # TODO: zastąp jednego z agentów wariantem MCTS
-    #     # podpowiedź: np. takim `red_player = MCTSPlayer(0.2, 0.5)`
-    #     red_player = MCTSPlayer(time_limit=0.2, c_coefficient=0.5)
-    #     blue_player = RandomPlayer()
-    #     game = Game(red_player, blue_player, board)
-
-    #     # TODO: jeżeli nie chcesz czytać na konsoli zapisu partii, skorzystaj z `verbose=False`
-    #     game.run(verbose=False)
-
-    #     if game.winner == Colour.RED:
-    #         red_wins += 1
-    #     else:
-    #         blue_wins += 1
-
     # TODO: jeżeli wszystko poszło dobrze, to agent MCTS powtarzalnie wygrywa z losowym
     print(f"Red  wins = {red_wins:>4} ({red_wins/n_games:6.1%})")
     print(f"Blue wins = {blue_wins:>4} ({blue_wins/n_games:6.1%})")
+    return red_wins / n_games
 
 
 if __name__ == "__main__":
@@ -379,6 +369,8 @@ if __name__ == "__main__":
     #    akcji)
     #  * możesz też zmienić rozmiar planszy lub skłonność do eksplorowania (`self.c_coefficient`)
 
+    # Compare MCTS and Random player
+    # ==============================
     config1 = {
         "n_games": 100,
         "board_shape": (8, 6),
@@ -387,6 +379,11 @@ if __name__ == "__main__":
         "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
         "blue_params": {},
     }
+    print("\nMCTS (RED) vs Random (BLUE)\n" + "=" * 60)
+    main(config1)
+
+    # Compare MCTS players with different time limits
+    # ===============================================
     config2 = {
         "n_games": 100,
         "board_shape": (8, 6),
@@ -395,20 +392,7 @@ if __name__ == "__main__":
         "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
         "blue_params": {"time_limit": 1.0, "c_coefficient": 0.5},
     }
-    config3 = {
-        "n_games": 100,
-        "board_shape": (8, 6),
-        "RedPlayerClass": MCTSPlayer,
-        "BluePlayerClass": MCTSPlayer,
-        "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
-        "blue_params": {"time_limit": 0.2, "c_coefficient": sqrt(2)},
-    }
-
-    print("\nMCTS vs Random\n" + "=" * 60)
-    main(config1)
-
-    print("\nMCTS vs MCTS\n" + "=" * 60)
+    print("\nMCTS (t=0.2, RED) vs MCTS (t=1.0, BLUE)\n" + "=" * 60)
     main(config2)
 
-    print("\nMCTS vs MCTS\n" + "=" * 60)
-    main(config3)
+    # Experiment with the `c_coefficient`
