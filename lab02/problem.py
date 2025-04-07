@@ -159,6 +159,7 @@ class Experiment:
     current_episode_no: int = 0
     penalties: Optional[list] = None  # tutaj będą się gromadzić kary przyznane w kolejnych epizodach
     verbose: bool = True
+    plot: bool = False
     savedir: str = "plots"
 
     def run(self) -> float:
@@ -186,6 +187,7 @@ class Experiment:
     def _episode(self) -> int:
         positions = []
         car = self.environment.spawn_car(self.driver)
+        
         while True:
             positions.append(car.position())
             car.drive()
@@ -193,12 +195,10 @@ class Experiment:
                 positions.append(car.position())
                 break
 
-        if self.verbose:
-            self._draw_episode(positions)
-
+        self._draw_episode(positions)
         return car.total_penalties
 
     def _draw_episode(self, positions: list[Position]) -> None:
-        if self.current_episode_no % DRAWING_FREQUENCY == 0:
+        if self.plot and self.current_episode_no % DRAWING_FREQUENCY == 0:
             utils.draw_episode(self.environment.corner.image, positions, self.current_episode_no, self.savedir)
             utils.draw_penalties_plot(self.penalties, AVERAGING_WINDOW_SIZE, self.current_episode_no, self.savedir)

@@ -9,11 +9,7 @@ import matplotlib.pyplot as plt
 import sklearn.preprocessing as skl_preprocessing
 
 from itertools import product
-from concurrent.futures import ProcessPoolExecutor
-
-from tqdm import tqdm
 from labellines import labelLines
-
 from problem import Action, available_actions, Corner, Driver, Experiment, Environment, State
 
 MAX_LEARNING_STEPS = 500
@@ -87,7 +83,7 @@ class OffPolicyNStepSarsaDriver(Driver):
 
             # TODO: Tutaj trzeba zaktualizować tablicę wartościującą akcje Q
             if update_step + self.step_no < self.final_step:
-                return_value += self.discount_factor**self.step_no * self.q[state, action]
+                return_value += self.q[state, action]
 
             delta = return_value_weight * (return_value - self.q[state_t, action_t])
             self.q[state_t, action_t] += self.step_size * delta
@@ -105,8 +101,7 @@ class OffPolicyNStepSarsaDriver(Driver):
         t_max = min(update_step + self.step_no + 1, self.final_step + 1)
 
         for i in range(t_min, t_max):
-            reward_i = self.rewards[self._access_index(i)]
-            return_value += self.discount_factor ** (i - update_step - 1) * reward_i
+            return_value += self.rewards[self._access_index(i)]
 
         return return_value
 
@@ -181,10 +176,14 @@ def worker(n: int, α: float) -> tuple[int, float, float]:
             discount_factor=1.00,
         ),
         number_of_episodes=10_000,
-        verbose=False,
+        verbose=True,
+        plot=False,
     )
     t = experiment.run()
     return n, α, t
+
+
+from concurrent.futures import ProcessPoolExecutor
 
 
 def main():
@@ -231,11 +230,29 @@ def main():
     # PARAMETRIC STUDY
     # =====================================================
     ns = [2, 4, 8, 16]
-    αs = np.arange(0, 1.1, 0.1)
+    αs = np.arange(0.1, 1.1, 0.1)
     results = {(n, α): None for n, α in product(ns, αs)}
 
+    # for i, (n, α) in enumerate(product(ns, αs)):
+    #     print(f"\nExperiment {i+1:3d}/{len(ns)*len(αs):3d} | n={n}, α={α:.1f}\n" + "=" * 60)
+    #     experiment = Experiment(
+    #         environment=Environment(
+    #             corner=Corner(name="corner_c"),
+    #             steering_fail_chance=0.01,
+    #         ),
+    #         driver=OffPolicyNStepSarsaDriver(
+    #             step_no=n,
+    #             step_size=α,
+    #             experiment_rate=0.05,
+    #             discount_factor=1.00,
+    #         ),
+    #         number_of_episodes=10_000,
+    #         verbose=True,
+    #     )
+    #     results[n, α] = experiment.run()
+
     with ProcessPoolExecutor() as executor:
-        for n, α, t in tqdm(executor.map(worker, *zip(*product(ns, αs))), total=len(ns) * len(αs)):
+        for n, α, t in executor.map(worker, *zip(*product(ns, αs))):
             results[n, α] = t
 
     with open("results.pickle", "wb") as file:
