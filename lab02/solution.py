@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import pickle
 import random
 import collections
@@ -10,6 +9,8 @@ import matplotlib.pyplot as plt
 import sklearn.preprocessing as skl_preprocessing
 
 from itertools import product
+from concurrent.futures import ProcessPoolExecutor
+
 from labellines import labelLines
 from problem import Action, available_actions, Corner, Driver, Experiment, Environment, State
 
@@ -162,9 +163,6 @@ class OffPolicyNStepSarsaDriver(Driver):
         return skl_preprocessing.normalize(probabilities.reshape(1, -1), norm="l1")[0]
 
 
-from concurrent.futures import ProcessPoolExecutor
-
-
 def conduct_experiment(
     n: int,
     α: float,
@@ -239,8 +237,8 @@ def main():
     # =====================================================
     # Compute average time for corner C over first 1_000 episodes for different values of `step_no`
     # and `step_size`
-    ns = [1, 2, 4, 8, 16]
-    αs = np.arange(0.05, 1.0, 0.05)
+    ns = [6]
+    αs = np.arange(0.1, 1.1, 0.1).tolist()
     results = {(n, α): None for n, α in product(ns, αs)}
 
     with ProcessPoolExecutor() as executor:
@@ -256,7 +254,7 @@ def main():
 
     labelLines(plt.gca().get_lines())
     plt.xlabel(r"$\alpha$")
-    plt.ylabel("Average corner time after first 1000 episodes")
+    plt.ylabel("Average corner time over first 1000 episodes")
     plt.title("Corner C")
     plt.savefig("extra/parametric_study.png", dpi=500)
 
@@ -268,8 +266,8 @@ def main():
     #         steering_fail_chance=0.01,
     #     ),
     #     driver=OffPolicyNStepSarsaDriver(
-    #         step_no=5,
-    #         step_size=0.8,
+    #         step_no=4,
+    #         step_size=0.5,
     #         experiment_rate=0.05,
     #         discount_factor=1.00,
     #     ),
