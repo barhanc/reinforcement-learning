@@ -2,6 +2,9 @@ import time
 import random
 import itertools
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 from enum import Enum
 from math import sqrt, log
 from abc import abstractmethod
@@ -396,4 +399,34 @@ if __name__ == "__main__":
     main(config2)
 
     # Experiment with the `c_coefficient`
+    # ===================================
     # TODO: Heat map with RED player win %
+
+    print("\nExperiment with `c_coefficient`")
+
+    c_grid = np.arange(0.0, 2.0, 0.05).tolist()
+    n_games = 100
+    red_winratio = np.zeros((len(c_grid), len(c_grid)))
+
+    for i, c1 in enumerate(c_grid):
+        for j, c2 in enumerate(c_grid):
+            print(f"RED {c1:.3f} | BLUE {c2:.3f}")
+            config = {
+                "n_games": n_games,
+                "board_shape": (8, 6),
+                "RedPlayerClass": MCTSPlayer,
+                "BluePlayerClass": MCTSPlayer,
+                "red_params": {"time_limit": 0.2, "c_coefficient": c1},
+                "blue_params": {"time_limit": 0.2, "c_coefficient": c2},
+            }
+            red_winratio[i, j] = main(config, verbose=False)
+
+    red_winratio *= 100
+
+    plt.imshow(red_winratio, cmap="seismic")
+    plt.colorbar(label=f"RED win % (over {n_games} games)")
+    plt.xticks(c_grid, c_grid)
+    plt.yticks(c_grid, c_grid)
+    plt.xlabel("RED MCTS player $c$ coefficient")
+    plt.ylabel("BLUE MCTS player $c$ coefficient")
+    plt.savefig("extra/heat.png", dpi=500)
