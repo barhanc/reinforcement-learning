@@ -238,23 +238,23 @@ def main():
     # =====================================================
     # Compute average time for corner C over first 1_000 episodes for different values of `step_no`
     # and `step_size`
-    # ns = [2, 4, 6, 8]
-    # αs = np.arange(0.1, 1.1, 0.1).tolist()
-    # results = {(n, α): None for n, α in product(ns, αs)}
+    ns = [2, 4, 6, 8]
+    αs = np.arange(0.1, 1.1, 0.1).tolist()
+    results = {(n, α): None for n, α in product(ns, αs)}
 
-    # with ProcessPoolExecutor() as executor:
-    #     for n, α, t in executor.map(conduct_experiment, *zip(*product(ns, αs))):
-    #         results[n, α] = t
+    with ProcessPoolExecutor() as executor:
+        for n, α, t in executor.map(conduct_experiment, *zip(*product(ns, αs))):
+            results[n, α] = t
 
-    # # --- Plot results
-    # for n in ns:
-    #     plt.plot(αs, [results[n, α] for α in αs], label=r"$n=$" + f"{n}")
+    # --- Plot results
+    for n in ns:
+        plt.plot(αs, [results[n, α] for α in αs], label=r"$n=$" + f"{n}")
 
-    # labelLines(plt.gca().get_lines())
-    # plt.xlabel(r"$\alpha$")
-    # plt.ylabel("Average corner time over first 1000 episodes")
-    # plt.title("Corner C")
-    # plt.savefig("extra/parametric_study.png", dpi=500)
+    labelLines(plt.gca().get_lines())
+    plt.xlabel(r"$\alpha$")
+    plt.ylabel("Average corner time over first 1000 episodes")
+    plt.title("Corner C")
+    plt.savefig("extra/parametric_study.png", dpi=500)
 
     # CORNER D
     # =====================================================
