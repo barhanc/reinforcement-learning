@@ -158,8 +158,8 @@ class Experiment:
     number_of_episodes: int
     current_episode_no: int = 0
     penalties: Optional[list] = None  # tutaj będą się gromadzić kary przyznane w kolejnych epizodach
-    verbose: bool = True
     plot: bool = False
+    verbose: bool = True
     savedir: str = "plots"
 
     def run(self, eval: bool = False) -> float:

@@ -396,3 +396,4 @@ if __name__ == "__main__":
     main(config2)
 
     # Experiment with the `c_coefficient`
+    # TODO: Heat map with RED player win %

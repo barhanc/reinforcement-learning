@@ -239,15 +239,15 @@ def main():
     # =====================================================
     # Compute average time for corner C over first 1_000 episodes for different values of `step_no`
     # and `step_size`
-    ns = [2, 4, 8, 16]
-    αs = np.arange(0.1, 1.1, 0.1)
+    ns = [1, 2, 4, 8, 16]
+    αs = np.arange(0.05, 1.0, 0.05)
     results = {(n, α): None for n, α in product(ns, αs)}
 
     with ProcessPoolExecutor() as executor:
         for n, α, t in executor.map(conduct_experiment, *zip(*product(ns, αs))):
             results[n, α] = t
 
-    with open("results.pickle", "wb") as file:
+    with open("extra/results.pickle", "wb") as file:
         pickle.dump(results, file, protocol=pickle.HIGHEST_PROTOCOL)
 
     # --- Plot results
@@ -256,9 +256,9 @@ def main():
 
     labelLines(plt.gca().get_lines())
     plt.xlabel(r"$\alpha$")
-    plt.ylabel("Average corner time")
+    plt.ylabel("Average corner time after first 1000 episodes")
     plt.title("Corner C")
-    plt.savefig("parametric_study.png", dpi=500)
+    plt.savefig("extra/parametric_study.png", dpi=500)
 
     # CORNER D
     # =====================================================
