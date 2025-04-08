@@ -374,29 +374,29 @@ if __name__ == "__main__":
 
     # Compare MCTS and Random player
     # ==============================
-    config1 = {
-        "n_games": 100,
-        "board_shape": (8, 6),
-        "RedPlayerClass": MCTSPlayer,
-        "BluePlayerClass": RandomPlayer,
-        "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
-        "blue_params": {},
-    }
-    print("\nMCTS (RED) vs Random (BLUE)\n" + "=" * 60)
-    main(config1)
+    # config1 = {
+    #     "n_games": 100,
+    #     "board_shape": (8, 6),
+    #     "RedPlayerClass": MCTSPlayer,
+    #     "BluePlayerClass": RandomPlayer,
+    #     "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
+    #     "blue_params": {},
+    # }
+    # print("\nMCTS (RED) vs Random (BLUE)\n" + "=" * 60)
+    # main(config1)
 
     # Compare MCTS players with different time limits
     # ===============================================
-    config2 = {
-        "n_games": 100,
-        "board_shape": (8, 6),
-        "RedPlayerClass": MCTSPlayer,
-        "BluePlayerClass": MCTSPlayer,
-        "red_params": {"time_limit": 0.2, "c_coefficient": 0.5},
-        "blue_params": {"time_limit": 1.0, "c_coefficient": 0.5},
-    }
-    print("\nMCTS (t=0.2, RED) vs MCTS (t=1.0, BLUE)\n" + "=" * 60)
-    main(config2)
+    # config2 = {
+    #     "n_games": 100,
+    #     "board_shape": (8, 6),
+    #     "RedPlayerClass": MCTSPlayer,
+    #     "BluePlayerClass": MCTSPlayer,
+    #     "red_params": {"time_limit": 1.0, "c_coefficient": 0.5},
+    #     "blue_params": {"time_limit": 0.2, "c_coefficient": 0.5},
+    # }
+    # print("\nMCTS (t=0.2, RED) vs MCTS (t=1.0, BLUE)\n" + "=" * 60)
+    # main(config2)
 
     # Experiment with the `c_coefficient`
     # ===================================
@@ -404,13 +404,13 @@ if __name__ == "__main__":
 
     print("\nExperiment with `c_coefficient`")
 
-    c_grid = np.arange(0.0, 2.0, 0.05).tolist()
+    c_grid = np.arange(0.0, 2.0, 0.5).tolist()
     n_games = 100
     red_winratio = np.zeros((len(c_grid), len(c_grid)))
 
     for i, c1 in enumerate(c_grid):
         for j, c2 in enumerate(c_grid):
-            print(f"RED {c1:.3f} | BLUE {c2:.3f}")
+            print(f"\nRED {c1:.3f} | BLUE {c2:.3f}")
             config = {
                 "n_games": n_games,
                 "board_shape": (8, 6),
@@ -419,14 +419,14 @@ if __name__ == "__main__":
                 "red_params": {"time_limit": 0.2, "c_coefficient": c1},
                 "blue_params": {"time_limit": 0.2, "c_coefficient": c2},
             }
-            red_winratio[i, j] = main(config, verbose=False)
+            red_winratio[i, j] = main(config)
 
     red_winratio *= 100
 
     plt.imshow(red_winratio, cmap="seismic")
     plt.colorbar(label=f"RED win % (over {n_games} games)")
-    plt.xticks(c_grid, c_grid)
-    plt.yticks(c_grid, c_grid)
-    plt.xlabel("RED MCTS player $c$ coefficient")
-    plt.ylabel("BLUE MCTS player $c$ coefficient")
+    plt.xticks(range(len(c_grid)), c_grid)
+    plt.yticks(range(len(c_grid)), c_grid)
+    plt.ylabel("RED MCTS player $c$ coefficient")
+    plt.xlabel("BLUE MCTS player $c$ coefficient")
     plt.savefig("extra/heat.png", dpi=500)
