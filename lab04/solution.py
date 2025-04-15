@@ -1,11 +1,12 @@
-from typing import Optional
-
+import numpy as np
 import gymnasium as gym
 import matplotlib.pyplot as plt
-import numpy as np
+
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tqdm import tqdm
+
+from typing import Optional
+from tqdm import trange
 
 
 class ActorCriticController:
@@ -13,10 +14,18 @@ class ActorCriticController:
         self.environment = environment
         self.discount_factor: float = discount_factor
         self.model: tf.keras.Model = self.create_actor_critic_model()
-        self.optimizer: tf.keras.optimizers.Optimizer = None  # TODO: przygotuj odpowiedni optymizator, pamiętaj o learning rate!
-        self.log_action_probability: Optional[tf.Tensor] = None  # zmienna pomocnicza, przyda się do obliczania docelowej straty
-        self.tape: Optional[tf.GradientTape] = None  # zmienna pomocnicza, związana z działaniem frameworku
-        self.last_error_squared: float = 0.0  # zmienna używana do wizualizacji wyników
+
+        # TODO: przygotuj odpowiedni optymizator, pamiętaj o learning rate!
+        self.optimizer: tf.keras.optimizers.Optimizer = None
+
+        # zmienna pomocnicza, przyda się do obliczania docelowej straty
+        self.log_action_probability: Optional[tf.Tensor] = None
+
+        # zmienna pomocnicza, związana z działaniem frameworku
+        self.tape: Optional[tf.GradientTape] = None
+
+        # zmienna używana do wizualizacji wyników
+        self.last_error_squared: float = 0.0
 
     @staticmethod
     def create_actor_critic_model() -> tf.keras.Model:
@@ -24,13 +33,21 @@ class ActorCriticController:
         return tf.keras.Model(inputs=None, outputs=None)
 
     def choose_action(self, state: np.ndarray) -> int:
-        state = self.format_state(state)  # przygotowanie stanu do formatu akceptowanego przez framework
-
+        # przygotowanie stanu do formatu akceptowanego przez framework
+        state = self.format_state(state)
         self.tape = tf.GradientTape()
+
         with self.tape:
-            # wszystko co dzieje się w kontekście danej taśmy jest zapisywane i może posłużyć do późniejszego wyliczania pożądanych gradientów
-            action = None  # TODO: tu trzeba wybrać odpowiednią akcję korzystając z aktora
-            self.log_action_probability = None  # TODO: tu trzeba zapisać do późniejszego wykorzystania logarytm prawdopodobieństwa wybrania uprzednio wybranej akcji (będzie nam potrzebny by policzyć stratę aktora)
+            # wszystko co dzieje się w kontekście danej taśmy jest zapisywane i może posłużyć do
+            # późniejszego wyliczania pożądanych gradientów
+
+            # TODO: tu trzeba wybrać odpowiednią akcję korzystając z aktora
+            action = None
+
+            # TODO: tu trzeba zapisać do późniejszego wykorzystania logarytm prawdopodobieństwa
+            # wybrania uprzednio wybranej akcji (będzie nam potrzebny by policzyć stratę aktora)
+            self.log_action_probability = None
+
         return int(action)
 
     # noinspection PyTypeChecker
@@ -38,16 +55,24 @@ class ActorCriticController:
         state = self.format_state(state)
         new_state = self.format_state(new_state)
 
-        with self.tape:  # to ta sama taśma, które użyliśmy już w fazie wybierania akcji
-            # wszystko co dzieje się w kontekście danej taśmy jest zapisywane i może posłużyć do późniejszego wyliczania pożądanych gradientów
+        # to ta sama taśma, które użyliśmy już w fazie wybierania akcji
+        with self.tape:
+            # wszystko co dzieje się w kontekście danej taśmy jest zapisywane i może posłużyć do
+            # późniejszego wyliczania pożądanych gradientów
 
-            error = None  # TODO: tu trzeba obliczyć błąd wartościowania aktualnego krytyka
+            # TODO: tu trzeba obliczyć błąd wartościowania aktualnego krytyka
+            error = None
             self.last_error_squared = float(error) ** 2
 
-            loss = None  # TODO: tu trzeba obliczyć sumę strat dla aktora i krytyka
+            # TODO: tu trzeba obliczyć sumę strat dla aktora i krytyka
+            loss = None
 
-        gradients = self.tape.gradient(loss, self.model.trainable_weights)  # tu obliczamy gradienty po wagach z naszej straty, pomagają w tym informacje zapisane na taśmie
-        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_weights))  # tutaj zmieniamy wagi modelu wykonując krok po gradiencie w kierunku minimalizacji straty
+        # tu obliczamy gradienty po wagach z naszej straty, pomagają w tym informacje zapisane na
+        # taśmie
+        gradients = self.tape.gradient(loss, self.model.trainable_weights)
+
+        # tutaj zmieniamy wagi modelu wykonując krok po gradiencie w kierunku minimalizacji straty
+        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_weights))
 
     @staticmethod
     def format_state(state: np.ndarray) -> np.ndarray:
@@ -55,20 +80,27 @@ class ActorCriticController:
 
 
 def main() -> None:
-    environment = gym.make('CartPole-v1', render_mode='human')  # zamień na gym.make('LunarLander-v2', render_mode='human') by zająć się lądownikiem
+    # zamień na gym.make('LunarLander-v2', render_mode='human') by zająć się lądownikiem
+    environment = gym.make("CartPole-v1", render_mode="human")
+
     # zmień lub usuń render_mode, by przeprowadzić trening bez wizualizacji środowiska
     controller = ActorCriticController(environment, 0.0001, 0.99)
 
     past_rewards = []
     past_errors = []
-    for i_episode in tqdm(range(2000)):  # tu decydujemy o liczbie epizodów
+
+    # tu decydujemy o liczbie epizodów
+    num_of_episodes = 2_000
+
+    for i_episode in trange(num_of_episodes):
         done = False
         state, info = environment.reset()
         reward_sum = 0.0
         errors_history = []
 
         while not done:
-            environment.render()  # tą linijkę możemy wykomentować, jeżeli nie chcemy mieć wizualizacji na żywo
+            # tą linijkę możemy wykomentować, jeżeli nie chcemy mieć wizualizacji na żywo
+            environment.render()
 
             action = controller.choose_action(state)
             new_state, reward, done, trunctated, info = environment.step(action)
@@ -80,26 +112,32 @@ def main() -> None:
         past_rewards.append(reward_sum)
         past_errors.append(np.mean(errors_history))
 
-        window_size = 50  # tutaj o rozmiarze okienka od średniej kroczącej
-        if i_episode % 25 == 0:  # tutaj o częstotliwości zrzucania wykresów
+        # tutaj o rozmiarze okienka od średniej kroczącej
+        window_size = 50
+
+        # tutaj o częstotliwości zrzucania wykresów
+        plot_frequency = 25
+
+        if i_episode % plot_frequency == 0:
             if len(past_rewards) >= window_size:
                 fig, axs = plt.subplots(2)
                 axs[0].plot(
-                    [np.mean(past_errors[i:i + window_size]) for i in range(len(past_errors) - window_size)],
-                    'tab:red',
+                    [np.mean(past_errors[i : i + window_size]) for i in range(len(past_errors) - window_size)],
+                    "tab:red",
                 )
-                axs[0].set_title('mean squared error')
+                axs[0].set_title("mean squared error")
                 axs[1].plot(
-                    [np.mean(past_rewards[i:i+window_size]) for i in range(len(past_rewards) - window_size)],
-                    'tab:green',
+                    [np.mean(past_rewards[i : i + window_size]) for i in range(len(past_rewards) - window_size)],
+                    "tab:green",
                 )
-                axs[1].set_title('sum of rewards')
-            plt.savefig(f'plots/learning_{i_episode}.png')
+                axs[1].set_title("sum of rewards")
+            plt.savefig(f"plots/learning_{i_episode}.png")
             plt.clf()
 
     environment.close()
-    controller.model.save("final.model")  # tu zapisujemy model
+    # tu zapisujemy model
+    controller.model.save("final.model")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
