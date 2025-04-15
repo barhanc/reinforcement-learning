@@ -396,7 +396,7 @@ if __name__ == "__main__":
         "red_params": {"time_limit": 1.0, "c_coefficient": 0.5},
         "blue_params": {"time_limit": 0.2, "c_coefficient": 0.5},
     }
-    print("\nMCTS (t=0.2, RED) vs MCTS (t=1.0, BLUE)\n" + "=" * 60)
+    print("\nMCTS t=1.0 (RED) vs MCTS t=0.2 (BLUE)\n" + "=" * 60)
     main(config2)
 
     # Experiment with the `c_coefficient`
