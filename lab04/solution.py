@@ -81,9 +81,11 @@ class ActorCriticController:
 
 def main() -> None:
     # zamień na gym.make('LunarLander-v2', render_mode='human') by zająć się lądownikiem
-    environment = gym.make("CartPole-v1", render_mode="human")
+    # environment = gym.make("LunarLander-v2", render_mode="human")
 
     # zmień lub usuń render_mode, by przeprowadzić trening bez wizualizacji środowiska
+    environment = gym.make("CartPole-v1", render_mode="human")
+
     controller = ActorCriticController(environment, 0.0001, 0.99)
 
     past_rewards = []
