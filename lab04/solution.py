@@ -1,144 +1,106 @@
+import os
+
+import torch
 import numpy as np
 import gymnasium as gym
 import matplotlib.pyplot as plt
 
-import tensorflow as tf
-import tensorflow_probability as tfp
-
-from typing import Optional
 from tqdm import trange
+from ac import ActorCriticController
 
 
-class ActorCriticController:
-    def __init__(self, environment, learning_rate: float, discount_factor: float) -> None:
-        self.environment = environment
-        self.discount_factor: float = discount_factor
-        self.model: tf.keras.Model = self.create_actor_critic_model()
+def train(controller: ActorCriticController, env: gym.Env, num_of_episodes: int, dirname: str):
+    os.makedirs(f"plots/{dirname}/", exist_ok=True)
+    os.makedirs(f"models/{dirname}/", exist_ok=True)
 
-        # TODO: przygotuj odpowiedni optymizator, pamiętaj o learning rate!
-        self.optimizer: tf.keras.optimizers.Optimizer = None
-
-        # zmienna pomocnicza, przyda się do obliczania docelowej straty
-        self.log_action_probability: Optional[tf.Tensor] = None
-
-        # zmienna pomocnicza, związana z działaniem frameworku
-        self.tape: Optional[tf.GradientTape] = None
-
-        # zmienna używana do wizualizacji wyników
-        self.last_error_squared: float = 0.0
-
-    @staticmethod
-    def create_actor_critic_model() -> tf.keras.Model:
-        # TODO: przygotuj potrzebne warstwy sieci neuronowej o odpowiednich aktywacjach i rozmiarach
-        return tf.keras.Model(inputs=None, outputs=None)
-
-    def choose_action(self, state: np.ndarray) -> int:
-        # przygotowanie stanu do formatu akceptowanego przez framework
-        state = self.format_state(state)
-        self.tape = tf.GradientTape()
-
-        with self.tape:
-            # wszystko co dzieje się w kontekście danej taśmy jest zapisywane i może posłużyć do
-            # późniejszego wyliczania pożądanych gradientów
-
-            # TODO: tu trzeba wybrać odpowiednią akcję korzystając z aktora
-            action = None
-
-            # TODO: tu trzeba zapisać do późniejszego wykorzystania logarytm prawdopodobieństwa
-            # wybrania uprzednio wybranej akcji (będzie nam potrzebny by policzyć stratę aktora)
-            self.log_action_probability = None
-
-        return int(action)
-
-    # noinspection PyTypeChecker
-    def learn(self, state: np.ndarray, reward: float, new_state: np.ndarray, terminal: bool) -> None:
-        state = self.format_state(state)
-        new_state = self.format_state(new_state)
-
-        # to ta sama taśma, które użyliśmy już w fazie wybierania akcji
-        with self.tape:
-            # wszystko co dzieje się w kontekście danej taśmy jest zapisywane i może posłużyć do
-            # późniejszego wyliczania pożądanych gradientów
-
-            # TODO: tu trzeba obliczyć błąd wartościowania aktualnego krytyka
-            error = None
-            self.last_error_squared = float(error) ** 2
-
-            # TODO: tu trzeba obliczyć sumę strat dla aktora i krytyka
-            loss = None
-
-        # tu obliczamy gradienty po wagach z naszej straty, pomagają w tym informacje zapisane na
-        # taśmie
-        gradients = self.tape.gradient(loss, self.model.trainable_weights)
-
-        # tutaj zmieniamy wagi modelu wykonując krok po gradiencie w kierunku minimalizacji straty
-        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_weights))
-
-    @staticmethod
-    def format_state(state: np.ndarray) -> np.ndarray:
-        return np.reshape(state, (1, state.size))
-
-
-def main() -> None:
-    # zamień na gym.make('LunarLander-v2', render_mode='human') by zająć się lądownikiem
-    # environment = gym.make("LunarLander-v2", render_mode="human")
-
-    # zmień lub usuń render_mode, by przeprowadzić trening bez wizualizacji środowiska
-    environment = gym.make("CartPole-v1", render_mode="human")
-
-    controller = ActorCriticController(environment, 0.0001, 0.99)
-
-    past_rewards = []
     past_errors = []
+    past_rewards = []
 
-    # tu decydujemy o liczbie epizodów
-    num_of_episodes = 2_000
+    window_size = 50
+    plot_frequency = 25
 
-    for i_episode in trange(num_of_episodes):
+    for episode in trange(num_of_episodes):
+        state, _ = env.reset()
         done = False
-        state, info = environment.reset()
         reward_sum = 0.0
         errors_history = []
 
         while not done:
-            # tą linijkę możemy wykomentować, jeżeli nie chcemy mieć wizualizacji na żywo
-            environment.render()
-
             action = controller.choose_action(state)
-            new_state, reward, done, trunctated, info = environment.step(action)
-            controller.learn(state, reward, new_state, done)
+            new_state, reward, terminated, truncated, _ = env.step(action)
+            controller.learn(state, reward, new_state, terminated)
             state = new_state
             reward_sum += reward
             errors_history.append(controller.last_error_squared)
+            done = terminated or truncated
 
         past_rewards.append(reward_sum)
         past_errors.append(np.mean(errors_history))
 
-        # tutaj o rozmiarze okienka od średniej kroczącej
-        window_size = 50
+        if episode % plot_frequency == 0 and len(past_rewards) >= window_size:
+            fig, axs = plt.subplots(2)
 
-        # tutaj o częstotliwości zrzucania wykresów
-        plot_frequency = 25
+            m = [np.mean(past_errors[i : i + window_size]) for i in range(len(past_errors) - window_size)]
+            axs[0].plot(m, "tab:red")
+            axs[0].set_ylabel("mean squared error")
 
-        if i_episode % plot_frequency == 0:
-            if len(past_rewards) >= window_size:
-                fig, axs = plt.subplots(2)
-                axs[0].plot(
-                    [np.mean(past_errors[i : i + window_size]) for i in range(len(past_errors) - window_size)],
-                    "tab:red",
-                )
-                axs[0].set_title("mean squared error")
-                axs[1].plot(
-                    [np.mean(past_rewards[i : i + window_size]) for i in range(len(past_rewards) - window_size)],
-                    "tab:green",
-                )
-                axs[1].set_title("sum of rewards")
-            plt.savefig(f"plots/learning_{i_episode}.png")
-            plt.clf()
+            m = [np.mean(past_rewards[i : i + window_size]) for i in range(len(past_rewards) - window_size)]
+            axs[1].plot(m, "tab:green")
+            axs[1].set_ylabel("sum of rewards")
 
-    environment.close()
-    # tu zapisujemy model
-    controller.model.save("final.model")
+            fig.savefig(f"plots/{dirname}/learning_{episode}.png", bbox_inches="tight")
+            fig.savefig(f"plots/{dirname}/learning.png", bbox_inches="tight")
+            plt.close()
+
+    env.close()
+
+    # Save the model to disk
+    torch.save(controller.actor.state_dict(), f"models/{dirname}/final_actor.model")
+    torch.save(controller.critic.state_dict(), f"models/{dirname}/final_critic.model")
+
+
+def evaluate(controller: ActorCriticController, env: gym.Env):
+    state, _ = env.reset()
+    done = False
+    while not done:
+        env.render()
+        action = controller.choose_action(state)
+        new_state, _, terminated, truncated, _ = env.step(action)
+        state = new_state
+        done = terminated or truncated
+
+
+def main():
+    print("\nCartPole-v1-backbone")
+    env = gym.make("CartPole-v1", render_mode=None)
+    controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": True})
+    train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-backbone")
+
+    print("\nCartPole-v1")
+    env = gym.make("CartPole-v1", render_mode=None)
+    controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
+    train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1")
+
+    print("\nCartPole-v1-small")
+    env = gym.make("CartPole-v1", render_mode=None)
+    controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 128, "h2": 32, "share_backbone": False})
+    train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-small")
+
+    print("\nCartPole-v1-small-llr")
+    env = gym.make("CartPole-v1", render_mode=None)
+    controller = ActorCriticController(env, 0.01, 0.99, {"h1": 128, "h2": 32, "share_backbone": False})
+    train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-small-llr")
+
+    # print("LunarLander-v3")
+    # env = gym.make("LunarLander-v3", render_mode=None)
+    # controller = ActorCriticController(env, 5e-6, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
+    # train(controller, env, num_of_episodes=3_000, dirname="LunarLander-v3")
+
+    # environment = gym.make("CartPole-v1", render_mode="human")
+    # controller = ActorCriticController(environment, 1e-4, 0.99)
+    # controller.actor.load_state_dict(torch.load("models/CartPole-v1-backbone/final_actor.model"))
+    # controller.critic.load_state_dict(torch.load("models/CartPole-v1-backbone/final_critic.model"))
+    # evaluate(controller, environment, num_of_episodes=10)
 
 
 if __name__ == "__main__":

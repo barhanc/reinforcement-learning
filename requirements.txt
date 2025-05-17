@@ -1,4 +1,0 @@
-matplotlib
-numpy
-tqdm
-scikit-learn
