@@ -130,6 +130,7 @@ class SAC:
         # Entropy coefficient / Entropy temperature
         # Inverse of the reward scale
         self.alpha = alpha
+        self.alpha_optimizer = None
         # TODO: fill this in
         # Additional properties for automatic alpha adjustment...
 

@@ -5,7 +5,7 @@ import numpy as np
 import gymnasium as gym
 import matplotlib.pyplot as plt
 
-from tqdm import trange
+from tqdm import trange, tqdm
 from ac import ActorCriticController
 
 
@@ -62,45 +62,57 @@ def train(controller: ActorCriticController, env: gym.Env, num_of_episodes: int,
 def evaluate(controller: ActorCriticController, env: gym.Env):
     state, _ = env.reset()
     done = False
+    reward_sum = 0
+    pbar = tqdm()
     while not done:
         env.render()
         action = controller.choose_action(state)
-        new_state, _, terminated, truncated, _ = env.step(action)
+        new_state, reward, terminated, truncated, _ = env.step(action)
         state = new_state
         done = terminated or truncated
+        reward_sum += reward
+        pbar.update()
+        pbar.set_description(f"Tot. reward={reward_sum:.2f}")
+    pbar.close()
 
 
 def main():
-    print("\nCartPole-v1-backbone")
-    env = gym.make("CartPole-v1", render_mode=None)
-    controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": True})
-    train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-backbone")
+    # print("\nCartPole-v1-backbone")
+    # env = gym.make("CartPole-v1", render_mode=None)
+    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": True})
+    # train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-backbone")
 
     print("\nCartPole-v1")
     env = gym.make("CartPole-v1", render_mode=None)
     controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
-    train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1")
+    train(controller, env, num_of_episodes=1_500, dirname="CartPole-v1")
 
-    print("\nCartPole-v1-small")
-    env = gym.make("CartPole-v1", render_mode=None)
-    controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 128, "h2": 32, "share_backbone": False})
-    train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-small")
+    # print("\nCartPole-v1-small")
+    # env = gym.make("CartPole-v1", render_mode=None)
+    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 128, "h2": 32, "share_backbone": False})
+    # train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-small")
 
-    print("\nCartPole-v1-small-llr")
-    env = gym.make("CartPole-v1", render_mode=None)
-    controller = ActorCriticController(env, 0.01, 0.99, {"h1": 128, "h2": 32, "share_backbone": False})
-    train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-small-llr")
+    # print("\nCartPole-v1-small-llr")
+    # env = gym.make("CartPole-v1", render_mode=None)
+    # controller = ActorCriticController(env, 0.01, 0.99, {"h1": 128, "h2": 32, "share_backbone": False})
+    # train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-small-llr")
 
     # print("LunarLander-v3")
     # env = gym.make("LunarLander-v3", render_mode=None)
-    # controller = ActorCriticController(env, 5e-6, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
+    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
     # train(controller, env, num_of_episodes=3_000, dirname="LunarLander-v3")
+    
+    # env = gym.make("LunarLander-v3", render_mode="human")
+    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
+    # controller.actor.load_state_dict(torch.load("models/LunarLander-v3/final_actor.model"))
+    # controller.critic.load_state_dict(torch.load("models/LunarLander-v3/final_critic.model"))
+    # evaluate(controller, env)
 
-    # environment = gym.make("CartPole-v1", render_mode="human")
-    # controller = ActorCriticController(environment, 1e-4, 0.99)
+    # env = gym.make("CartPole-v1", render_mode="human")
+    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": True})
     # controller.actor.load_state_dict(torch.load("models/CartPole-v1-backbone/final_actor.model"))
     # controller.critic.load_state_dict(torch.load("models/CartPole-v1-backbone/final_critic.model"))
-    # evaluate(controller, environment, num_of_episodes=10)
+    # evaluate(controller, env)
 
 
 if __name__ == "__main__":

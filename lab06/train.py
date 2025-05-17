@@ -8,6 +8,7 @@
 import argparse
 
 import gymnasium as gym
+
 # Uncomment the following line to use gymnasium_robotics environments
 # import gymnasium_robotics
 import panda_gym
@@ -67,7 +68,7 @@ def main(env_id: str) -> None:
         update_after=1000,
         batch_size=64,
         # alpha="auto", # use automatic alpha adjustment (uncoment when implemented)
-        alpha=0.05, # use fixed alpha (comment out when implementing automatic alpha adjustment)
+        alpha=0.05,  # use fixed alpha (comment out when implementing automatic alpha adjustment)
         gamma=0.9,
         # polyak=0.95,
         lr=1e-4,
@@ -88,9 +89,7 @@ def main(env_id: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--env", type=str, default="PandaReach-v3", help="Gym environment ID"
-    )
+    parser.add_argument("--env", type=str, default="PandaReach-v3", help="Gym environment ID")
 
     args = parser.parse_args()
 
