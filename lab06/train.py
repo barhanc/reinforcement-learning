@@ -1,9 +1,11 @@
-# A script to train a Soft Actor-Critic (SAC) agent with Hindsight Experience Replay (HER) on a specified gym environment.
-# By default it uses the PandaReach-v3 environment from the panda_gym package.
-# But it can be easily modified to use any other gym environment, including those from the gymnasium_robotics package.
-# Just uncomment the import statement for gymnasium_robotics and register the environments and use for example the FetchReach-v3 environment.
+# A script to train a Soft Actor-Critic (SAC) agent with Hindsight Experience Replay (HER) on a
+# specified gym environment. By default it uses the PandaReach-v3 environment from the panda_gym
+# package. But it can be easily modified to use any other gym environment, including those from the
+# gymnasium_robotics package. Just uncomment the import statement for gymnasium_robotics and
+# register the environments and use for example the FetchReach-v3 environment.
 
-# Also give it a try on push and pick and place tasks: PandaPush-v3, PandaPickAndPlace-v3, FetchPush-v3, FetchPickAndPlace-v3
+# Also give it a try on push and pick and place tasks: PandaPush-v3, PandaPickAndPlace-v3,
+# FetchPush-v3, FetchPickAndPlace-v3
 
 import argparse
 

@@ -17,7 +17,6 @@ from .policies import MlpPolicy
 from .utils import count_vars
 
 
-
 class SAC:
     """Soft Actor-Critic (SAC)"""
 
@@ -52,29 +51,30 @@ class SAC:
                 observations as inputs, and ``q1`` and ``q2`` should accept a batch
                 of observations and a batch of actions as inputs. When called,
                 ``act``, ``q1``, and ``q2`` should return:
+
                 ===========  ================  ======================================
                 Call         Output Shape      Description
                 ===========  ================  ======================================
                 ``act``      (batch, act_dim)  | Numpy array of actions for each
-                                            | observation.
+                                               | observation.
                 ``q1``       (batch,)          | Tensor containing one current estimate
-                                            | of Q* for the provided observations
-                                            | and actions. (Critical: make sure to
-                                            | flatten this!)
+                                               | of Q* for the provided observations
+                                               | and actions. (Critical: make sure to
+                                               | flatten this!)
                 ``q2``       (batch,)          | Tensor containing the other current
-                                            | estimate of Q* for the provided observations
-                                            | and actions. (Critical: make sure to
-                                            | flatten this!)
+                                               | estimate of Q* for the provided observations
+                                               | and actions. (Critical: make sure to
+                                               | flatten this!)
                 ===========  ================  ======================================
                 Calling ``pi`` should return:
                 ===========  ================  ======================================
                 Symbol       Shape             Description
                 ===========  ================  ======================================
                 ``a``        (batch, act_dim)  | Tensor containing actions from policy
-                                            | given observations.
+                                               | given observations.
                 ``logp_pi``  (batch,)          | Tensor containing log probabilities of
-                                            | actions in ``a``. Importantly: gradients
-                                            | should be able to flow back into ``a``.
+                                               | actions in ``a``. Importantly: gradients
+                                               | should be able to flow back into ``a``.
                 ===========  ================  ======================================
             policy_kwargs (dict): Any kwargs appropriate for the Policy object
                 you provided to SAC.
@@ -143,21 +143,14 @@ class SAC:
             p.requires_grad = False
 
         # List of parameters for both Q-networks (save this for convenience)
-        self.q_params = itertools.chain(
-            self.policy.q1.parameters(), self.policy.q2.parameters()
-        )
+        self.q_params = itertools.chain(self.policy.q1.parameters(), self.policy.q2.parameters())
 
         # Experience buffer
         self.buffer = buffer
 
         # Count variables (protip: try to get a feel for how different size networks behave!)
-        var_counts = tuple(
-            count_vars(module)
-            for module in [self.policy.pi, self.policy.q1, self.policy.q2]
-        )
-        self.logger.log_msg(
-            "\nNumber of parameters: \t pi: %d, \t q1: %d, \t q2: %d\n" % var_counts
-        )
+        var_counts = tuple(count_vars(module) for module in [self.policy.pi, self.policy.q1, self.policy.q2])
+        self.logger.log_msg("\nNumber of parameters: \t pi: %d, \t q1: %d, \t q2: %d\n" % var_counts)
 
         # Set up optimizers for policy and q-function
         self.pi_optimizer = Adam(self.policy.pi.parameters(), lr=lr)
@@ -166,9 +159,7 @@ class SAC:
         # Target entropy is used when learning the entropy coefficient
         if self.target_entropy == "auto":
             # automatically set target entropy if needed
-            self.target_entropy = -np.prod(self.env.action_space.shape).astype(
-                np.float32
-            )
+            self.target_entropy = -np.prod(self.env.action_space.shape).astype(np.float32)
         else:
             # Force conversion
             # this will also throw an error for unexpected string
@@ -185,9 +176,7 @@ class SAC:
             init_value = 1.0
             if "_" in self.alpha:
                 init_value = float(self.alpha.split("_")[1])
-                assert (
-                    init_value > 0.0
-                ), "The initial value of alpha must be greater than 0"
+                assert init_value > 0.0, "The initial value of alpha must be greater than 0"
 
             # Consider: optimizing the log of the entropy coeff which is slightly different from the paper
             # as discussed in https://github.com/rail-berkeley/softlearning/issues/37
@@ -198,9 +187,7 @@ class SAC:
         else:
             # Force conversion to float
             # this will throw an error if a malformed string (different from 'auto') is passed
-            self.alpha = torch.tensor(
-                float(self.alpha), dtype=torch.float32, device=alpha_device
-            )
+            self.alpha = torch.tensor(float(self.alpha), dtype=torch.float32, device=alpha_device)
 
     # Set up function for computing SAC Q-losses
     def compute_loss_q(self, data):
@@ -233,9 +220,7 @@ class SAC:
         loss_q = 0.5 * (loss_q1 + loss_q2)
 
         # Useful info for logging
-        q_info = dict(
-            q1_vals=q1.detach().cpu().numpy(), q2_vals=q2.detach().cpu().numpy()
-        )
+        q_info = dict(q1_vals=q1.detach().cpu().numpy(), q2_vals=q2.detach().cpu().numpy())
 
         return loss_q, q_info
 
@@ -290,9 +275,7 @@ class SAC:
 
         # Finally, update target networks by polyak averaging.
         with torch.no_grad():
-            for p, p_targ in zip(
-                self.policy.parameters(), self.policy_targ.parameters()
-            ):
+            for p, p_targ in zip(self.policy.parameters(), self.policy_targ.parameters()):
                 # NB: We use an in-place operations "mul_", "add_" to update target
                 # params, as opposed to "mul" and "add", which would make new tensors.
                 p_targ.data.mul_(self.polyak)
@@ -387,7 +370,6 @@ class SAC:
 
         return results
 
-
     def train(self, n_steps, log_interval=1000, callbacks=[]):
         # Prepare for interaction with environment
         (o, i), ep_ret, ep_len = self.env.reset(), 0, 0
@@ -454,7 +436,6 @@ class SAC:
                         break
 
         return test_ep_return
-
 
     def save(self, path: str):
         torch.save(
