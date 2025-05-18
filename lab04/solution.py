@@ -74,6 +74,7 @@ def evaluate(controller: ActorCriticController, env: gym.Env):
         pbar.update()
         pbar.set_description(f"Tot. reward={reward_sum:.2f}")
     pbar.close()
+    env.close()
 
 
 def main():
@@ -82,10 +83,10 @@ def main():
     # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": True})
     # train(controller, env, num_of_episodes=2_000, dirname="CartPole-v1-backbone")
 
-    print("\nCartPole-v1")
-    env = gym.make("CartPole-v1", render_mode=None)
-    controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
-    train(controller, env, num_of_episodes=1_500, dirname="CartPole-v1")
+    # print("\nCartPole-v1")
+    # env = gym.make("CartPole-v1", render_mode=None)
+    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
+    # train(controller, env, num_of_episodes=1_500, dirname="CartPole-v1")
 
     # print("\nCartPole-v1-small")
     # env = gym.make("CartPole-v1", render_mode=None)
@@ -101,12 +102,12 @@ def main():
     # env = gym.make("LunarLander-v3", render_mode=None)
     # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
     # train(controller, env, num_of_episodes=3_000, dirname="LunarLander-v3")
-    
-    # env = gym.make("LunarLander-v3", render_mode="human")
-    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
-    # controller.actor.load_state_dict(torch.load("models/LunarLander-v3/final_actor.model"))
-    # controller.critic.load_state_dict(torch.load("models/LunarLander-v3/final_critic.model"))
-    # evaluate(controller, env)
+
+    env = gym.make("LunarLander-v3", render_mode="human")
+    controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
+    controller.actor.load_state_dict(torch.load("models/LunarLander-v3-run2/final_actor.model"))
+    controller.critic.load_state_dict(torch.load("models/LunarLander-v3-run2/final_critic.model"))
+    evaluate(controller, env)
 
     # env = gym.make("CartPole-v1", render_mode="human")
     # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": True})
