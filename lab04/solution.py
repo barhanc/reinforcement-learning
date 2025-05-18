@@ -107,13 +107,31 @@ def main():
     controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
     controller.actor.load_state_dict(torch.load("models/LunarLander-v3-run2/final_actor.model"))
     controller.critic.load_state_dict(torch.load("models/LunarLander-v3-run2/final_critic.model"))
-    evaluate(controller, env)
+
+    # stan tuż przed lądowaniem
+    x = torch.tensor([0, 0.01, 0, -0.1, 0, 0, 0, 0]).float().to(controller.device).unsqueeze(0)
+    print(controller.critic(x).item())
+    # stan, w którym lądownik jest silnie przechylony
+    x = torch.tensor([0, 0.5, 0, -0.1, 2, 0, 0, 0]).float().to(controller.device).unsqueeze(0)
+    print(controller.critic(x).item())
+    print(controller.actor(x))
 
     # env = gym.make("CartPole-v1", render_mode="human")
-    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": True})
-    # controller.actor.load_state_dict(torch.load("models/CartPole-v1-backbone/final_actor.model"))
-    # controller.critic.load_state_dict(torch.load("models/CartPole-v1-backbone/final_critic.model"))
-    # evaluate(controller, env)
+    # controller = ActorCriticController(env, 0.00001, 0.99, {"h1": 1024, "h2": 256, "share_backbone": False})
+    # controller.actor.load_state_dict(torch.load("models/CartPole-v1/final_actor.model"))
+    # controller.critic.load_state_dict(torch.load("models/CartPole-v1/final_critic.model"))
+
+    # # stan, w którym kijek jest pionowy, a prędkości zerowe
+    # x = torch.tensor([0, 0, 0, 0]).float().to(controller.device)
+    # print(controller.critic(x).item())
+    # # stan, w którym kijek zaczyna się szybko przechylać
+    # x = torch.tensor([0, 0, 0.1, 10.0]).float().to(controller.device)
+    # print(controller.critic(x).item())
+    # # stan, w którym wagonik jest blisko krawędzi obszaru
+    # x = torch.tensor([4.75, 0, 0, 0]).float().to(controller.device)
+    # print(controller.critic(x).item())
+
+    evaluate(controller, env)
 
 
 if __name__ == "__main__":
