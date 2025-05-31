@@ -9,7 +9,7 @@ dataset = Dataset.from_dict({"prompt": lines})
 
 MODEL = "gpt2"
 model_name = f"{MODEL}"
-model_name = f"./{MODEL}-GRPO/checkpoint-36/"
+model_name = f"./{MODEL}-GRPO/checkpoint-336/"
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
