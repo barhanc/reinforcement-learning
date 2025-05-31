@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Literal
 
 import gymnasium as gym
 import numpy as np
@@ -8,6 +8,28 @@ from numpy.typing import NDArray
 from torch import Tensor
 
 from .utils import combined_shape
+
+
+class HERBuffer:
+    def __init__(
+        self,
+        env: gym.Env,
+        size: int = 100_000,
+        device: Optional[torch.device] = None,
+        n_sampled_goal: int = 1,
+        goal_selection_strategy: Literal["final", "future", "episode"] = "final",
+    ):
+        self.env: gym.Env = env
+        self.size: int = size
+        self.device: Optional[torch.device] = device
+        self.n_sampled_goal: int = n_sampled_goal
+        self.goal_selection_strategy: Literal["final", "future", "episode"] = goal_selection_strategy
+
+    def store(self): ...
+    def sample_batch(self): ...
+    def start_episode(self): ...
+    def end_episode(self): ...
+    def _sample_episode(self): ...
 
 
 class BaseBuffer(ABC):
