@@ -133,6 +133,7 @@ class SAC:
         self.alpha_optimizer = None
         # TODO: fill this in
         # Additional properties for automatic alpha adjustment...
+        self.log_alpha = None
 
         # Create actor-critic module and target networks
         self.policy = policy
@@ -182,8 +183,9 @@ class SAC:
             # as discussed in https://github.com/rail-berkeley/softlearning/issues/37
 
             # TODO: fill this in
-            # self.alpha = ...
-            # self.alpha_optimizer = ...
+            self.alpha = torch.tensor(init_value).float().to(alpha_device)
+            self.log_alpha = torch.nn.Parameter(self.alpha.clone().log())
+            self.alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=lr)
         else:
             # Force conversion to float
             # this will throw an error if a malformed string (different from 'auto') is passed
@@ -245,8 +247,11 @@ class SAC:
         # so we don't change it with other losses
         # see https://github.com/rail-berkeley/softlearning/issues/60
         # TODO: fill this in
-        alpha_loss = 0
-        alpha = 0
+        alpha = self.log_alpha.detach().exp()
+        # https://github.com/rail-berkeley/softlearning/issues/37
+        # min E[-log alpha * (log_pi + H)]
+        alpha_loss = torch.mean(-self.log_alpha * (logp_pi + self.target_entropy).detach())
+
         return alpha_loss, alpha
         # Remember to use target_entropy
 
@@ -286,7 +291,11 @@ class SAC:
         if self.alpha_optimizer is not None:
             alpha_loss, alpha = self.compute_loss_alpha(logp_pi)
             # TODO: fill this in
-            # Update alpha...
+            self.alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optimizer.step()
+            self.alpha = alpha
+            alpha_loss = alpha_loss
         else:
             alpha_loss = np.array(0)
 
@@ -445,7 +454,7 @@ class SAC:
                 "pi_optimizer_state_dict": self.pi_optimizer.state_dict(),
                 "q_optimizer_state_dict": self.q_optimizer.state_dict(),
                 # TODO: fill this in
-                # "alpha_optimizer_state_dict": ...,
+                "alpha_optimizer_state_dict": self.alpha_optimizer.state_dict(),
             },
             path,
         )
@@ -457,4 +466,4 @@ class SAC:
         self.q_optimizer.load_state_dict(checkpoint["q_optimizer_state_dict"])
         self.alpha = checkpoint["alpha"]
         # TODO: fill this in
-        # self.alpha_optimizer = ...
+        self.alpha_optimizer.load_state_dict(checkpoint["alpha_optimizer_state_dict"])

@@ -69,8 +69,8 @@ def main(env_id: str) -> None:
         update_every=1,
         update_after=1000,
         batch_size=64,
-        # alpha="auto", # use automatic alpha adjustment (uncoment when implemented)
-        alpha=0.05,  # use fixed alpha (comment out when implementing automatic alpha adjustment)
+        alpha="auto",  # use automatic alpha adjustment (uncoment when implemented)
+        # alpha=0.05,  # use fixed alpha (comment out when implementing automatic alpha adjustment)
         gamma=0.9,
         # polyak=0.95,
         lr=1e-4,
@@ -78,15 +78,17 @@ def main(env_id: str) -> None:
         max_episode_len=100,
         start_steps=1_000,
     )
-    algo.train(n_steps=100_000, log_interval=1000)
+    # algo.train(n_steps=100_000, log_interval=1000)
+    # algo.save("./SAC.pth")
     env.close()
     logger.close()
 
-    policy.cpu()
-    env = gym.make(env_id, render_mode="human")
-    test_rew, test_ep_len = algo.test(env, n_episodes=50, sleep=1 / 30)
+    algo.load("./SAC.pth")
+    policy = algo.policy.cpu()
+    env = gym.make(env_id)  # , render_mode="human")
+    results = algo.test(env, n_episodes=50, sleep=1 / 30)
     env.close()
-    print(f"Test reward {test_rew}, Test episode length: {test_ep_len}")
+    print(f"Test reward {results['mean_ep_ret']}, Test episode length: {results['mean_ep_len']}")
 
 
 if __name__ == "__main__":

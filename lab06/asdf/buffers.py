@@ -139,6 +139,56 @@ class HerReplayBuffer(DictReplayBuffer):
         # TODO: fill this in
         # You can put additional attributes here if needed.
         # Also: There is a number of methods in the base class that could be useful to override.
+        self._start_ptr = None
+
+    def start_episode(self):
+        self._start_ptr = self._ptr
+
+    def end_episode(self):
+        if self._start_ptr <= self._ptr:
+            idx = np.arange(self._start_ptr, self._ptr)
+        else:
+            idx = np.concat((np.arange(self._start_ptr, self.size), np.arange(self._ptr)))
+        episode = self.batch(idx)
+        self._augment(episode)
+
+    def _augment(self, episode: dict[str, Union[Tensor, dict[str, Tensor]]]):
+        length = len(episode["info"])
+
+        for curr_idx in range(length):
+            action = episode["action"][curr_idx]
+            observation = {k: v[curr_idx] for k, v in episode["observation"].items()}
+            next_observation = {k: v[curr_idx] for k, v in episode["next_observation"].items()}
+
+            for _ in range(self.n_sampled_goal):
+                match self.selection_strategy:
+                    case "final":
+                        next_idx = -1
+                    case "future":
+                        if curr_idx == length - 1:
+                            break
+                        next_idx = np.random.randint(curr_idx + 1, length)
+                    case _:
+                        raise ValueError(f"Not recognised {self.selection_strategy=}")
+
+                reward = self.env.unwrapped.compute_reward(
+                    episode["next_observation"]["achieved_goal"][curr_idx].cpu().numpy(),
+                    episode["next_observation"]["achieved_goal"][next_idx].cpu().numpy(),
+                    episode["info"][next_idx],
+                )
+
+                observation["desired_goal"] = episode["next_observation"]["achieved_goal"][next_idx]
+                next_observation["desired_goal"] = episode["next_observation"]["achieved_goal"][next_idx]
+
+                self.store(
+                    observation=observation,
+                    next_observation=next_observation,
+                    action=action,
+                    reward=reward,
+                    info=episode["info"][next_idx],
+                    truncated=episode["truncated"][next_idx],
+                    terminated=episode["terminated"][next_idx],
+                )
 
     def store(
         self,
