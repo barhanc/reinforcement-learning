@@ -1,4 +1,4 @@
-# Reinforcement Learning: From Bandits to Decision Transformers 🤖🎮
+# Reinforcement Learning: From Bandits to Decision Transformers
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org/)
@@ -10,7 +10,7 @@ A practical and rigorous curriculum covering modern Reinforcement Learning algor
 
 ---
 
-## 📑 Overview
+## Overview
 
 | Lab | Module | Paradigm & Algorithms | Environment / Benchmark | Key Stack |
 | :---: | :--- | :--- | :--- | :--- |
@@ -24,7 +24,7 @@ A practical and rigorous curriculum covering modern Reinforcement Learning algor
 
 ---
 
-## 🔬 Detailed Lab Breakdown
+## Detailed Lab Breakdown
 
 <details open>
 <summary><b>Lab 1: Multi-Armed Bernoulli Bandits</b></summary>
@@ -106,7 +106,7 @@ A practical and rigorous curriculum covering modern Reinforcement Learning algor
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Clone the Repository
 
