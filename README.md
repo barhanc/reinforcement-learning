@@ -4,6 +4,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Gymnasium](https://img.shields.io/badge/Gymnasium-v0.29+-000000.svg?style=flat)](https://gymnasium.farama.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A practical and rigorous curriculum covering modern Reinforcement Learning algorithms and paradigms. From classical multi-armed bandits and tabular temporal-difference control to deep continuous actor-critics, hindsight goal-conditioning, offline Decision Transformers, and LLM alignment with Group Relative Policy Optimization (GRPO).
 
 ## Overview
