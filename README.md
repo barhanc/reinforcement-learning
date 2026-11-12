@@ -25,9 +25,9 @@ A practical and rigorous curriculum covering modern Reinforcement Learning algor
 
 - **Focus**: Model-free prediction and control in discrete Markov Decision Processes (MDPs).
 - **Key Concepts**:
-  - On-policy Temporal Difference control using **SARSA** ($S \to A \to R \to S' \to A'$).
-  - State representation for physical kinematics: 2D position and continuous velocity vectors with inertial acceleration and braking dynamics.
-  - Handling terminal track boundaries, track collision resets, and convergence to near-optimal navigation policies.
+  - Temporal Difference control using off-policy $n$-step **SARSA**.
+  - State representation for physical kinematics: 2D position and discrete velocity vectors with acceleration and braking dynamics.
+  - Handling terminal track boundaries, track collision resets, and convergence to near-optimal navigation policies on racetrack grids.
 - **Directory**: [`lab02/`](./lab02/)
 </details>
 
