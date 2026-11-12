@@ -3,12 +3,8 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Gymnasium](https://img.shields.io/badge/Gymnasium-v0.29+-000000.svg?style=flat)](https://gymnasium.farama.org/)
-[![TRL](https://img.shields.io/badge/HuggingFace-TRL-FFD21E.svg?style=flat&logo=huggingface&logoColor=black)](https://github.com/huggingface/trl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
 A practical and rigorous curriculum covering modern Reinforcement Learning algorithms and paradigms. From classical multi-armed bandits and tabular temporal-difference control to deep continuous actor-critics, hindsight goal-conditioning, offline Decision Transformers, and LLM alignment with Group Relative Policy Optimization (GRPO).
-
----
 
 ## Overview
 
@@ -89,8 +85,6 @@ A practical and rigorous curriculum covering modern Reinforcement Learning algor
   - Conditioning test-time rollouts on desired target returns to achieve reward-maximizing closed-loop control.
 - **Directory**: [`lab07/`](./lab07/)
 </details>
-
----
 
 ## Getting Started
 
