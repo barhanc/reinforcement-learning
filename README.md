@@ -1,4 +1,4 @@
-# Reinforcement Learning: From Bandits to Decision Transformers
+# Reinforcement Learning
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C.svg?style=flat&logo=pytorch&logoColor=white)](https://pytorch.org/)
@@ -11,20 +11,6 @@ A practical and rigorous curriculum covering modern Reinforcement Learning algor
 ---
 
 ## Overview
-
-| Lab | Module | Paradigm & Algorithms | Environment / Benchmark | Key Stack |
-| :---: | :--- | :--- | :--- | :--- |
-| [**01**](./lab01/) | **Multi-Armed Bandits** | $\epsilon$-Greedy, UCB1, Thompson Sampling (Beta-Bernoulli), Regret Analysis | Bernoulli Multi-Armed Bandits | NumPy, SciPy |
-| [**02**](./lab02/) | **Temporal Difference Learning** | On-Policy TD Control (SARSA), Tabular State-Action Values $Q(s, a)$, $\epsilon$-Greedy Exploration | Discrete Racetrack Navigation | NumPy |
-| [**03**](./lab03/) | **Monte Carlo Tree Search (MCTS)** | UCT Selection, Node Expansion, Random Rollout Simulation, Backpropagation | Isolation Board Game | Python, NumPy |
-| [**04**](./lab04/) | **Advantage Actor-Critic (A2C)** | Policy Gradient, Baseline Value Function, Advantage Estimation, Continuous/Discrete Action Spaces | Gymnasium `LunarLander-v2` | PyTorch, Gymnasium |
-| [**05**](./lab05/) | **LLM Alignment via GRPO** | Group Relative Policy Optimization (GRPO), Critic-Free Group Normalized Advantage, Reward Modeling | Causal LLM Text Generation | HuggingFace TRL, Transformers |
-| [**06**](./lab06/) | **Soft Actor-Critic + HER** | Maximum Entropy RL, Continuous Control (SAC), Automatic Entropy Temperature $\alpha$, Hindsight Experience Replay | `PandaReach-v3` (Robotic Arm) | PyTorch, Panda-Gym |
-| [**07**](./lab07/) | **Offline RL: Decision Transformer** | Sequence Modeling for RL, Causal Attention over Returns-to-Go $(\hat{R}_t, s_t, a_t)$, Offline Policy Evaluation | Minari Offline RL Benchmarks | PyTorch, Minari, nanoDT |
-
----
-
-## Detailed Lab Breakdown
 
 <details open>
 <summary><b>Lab 1: Multi-Armed Bernoulli Bandits</b></summary>
